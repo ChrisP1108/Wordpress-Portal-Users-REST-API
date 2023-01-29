@@ -81,9 +81,9 @@
 
 	// Administrator Or Portal User
 
-	function portal_authorized() {
+	function portal_authorized($req) {
 		$is_user = true;
-		if (portal_admin() && $is_user) {
+		if (portal_admin($req) || $is_user) {
 			return true;
 		} else return false;
 	}
