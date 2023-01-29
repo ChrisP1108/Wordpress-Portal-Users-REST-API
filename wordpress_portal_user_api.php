@@ -305,7 +305,8 @@
 					'company' => $company, 
 					'email' => $email,
 					'password' => $password,
-					'updated' => $updated_at
+					'updated' => $updated_at,
+					'is_active' => 1
 				),
 					array('id' => $user_id)
 				);
