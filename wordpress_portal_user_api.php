@@ -113,12 +113,12 @@
 		// Check If Portal Table Is Empty
 
 		if ($portal_users === null || count($portal_users) === 0) {
-			return rest_ensure_response(['message' => 'portal users table is currently empty', 'data' => []]);
+			return rest_ensure_response(['message' => 'portal users table is currently empty.', 'data' => []]);
 		} else {
 			
 		// Return Portal Users If Found In Table
 
-			return ($portal_users);
+			return rest_ensure_response(['message' => 'portal users data retrieved successfully.', 'data' => $portal_users]);
 		}
 	};
 
