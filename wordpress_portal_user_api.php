@@ -234,6 +234,12 @@
 		$email = $body->email ?? NULL;
 		$password = $body->password ?? NULL;
 		
+		// Checks That There Is At Least One Field To Update.  Otherwise Error Thrown
+		
+		if (!$first_name && !$last_name && !$company && !$email && !$password) {
+			return new WP_Error('error updating user', 'no fields have been passed in to update.  portal user data will remain the same.', ['status' => 400]);
+		}
+		
 		// Define Wordpress Database Methods And Database Table
 		
 		global $wpdb;
