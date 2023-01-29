@@ -30,8 +30,62 @@
 
 // AUTHENTICATION
 
+	// Administrator Only 
+
+	function portal_admin($req) {
+		// Get Body Email
+		
+		$body = json_decode($req->get_body());
+		$admin_email = $body->admin_email ?? NULL;
+		$admin_password = $body->admin_password ?? NULL;
+		
+		// Check That Admin Username And Password Is In Body.  If Not, Throw Error
+		
+		if (!$admin_email || !$admin_password) {
+			return new WP_Error('admin username and password required', 'admin username and password must be provided to execute this action.', ['status' => 401]);
+		}
+		
+		// Define Wordpress Database Methods And Database Table
+		
+		global $wpdb;
+		$admin_table_name = $wpdb->prefix . "users";
+		$admins = $wpdb->get_results($wpdb->prepare("SELECT * FROM ". $admin_table_name));
+		
+		// Check If Portal Table Is Empty.  Deny Access If Empty
+
+		if ($admins === null || count($admins) === 0) {
+			return new WP_Error('admin username and password not found', 'admin username and password not found as admin users table is currently empty', ['status' => 400]);
+		}
+		
+		// Loop Through Portal Users In Table And Find User Corresponding To Email
+		
+		foreach($admins as $admin) {
+			if (strtolower($admin->user_email) === strtolower($admin_email)) {
+
+				// Check That Passwords Match
+
+				$password_valid = wp_check_password($admin_password, $admin->user_pass);
+
+				if (!$password_valid) {
+					return new WP_Error('invalid admin password', 'admin password is invalid.', ['status' => 401]);
+				} else {
+					return true;
+				}
+			}
+		}
+		
+		// If No Table Row Was Found With Corresponding Admin Email, Deny Access
+		
+		return new WP_Error('invalid admin email', 'admin email is invalid.', ['status' => 401]);
+	}
+
+	// Administrator Or Portal User
+
 	function portal_authorized() {
-		return true;
+		$is_user = true;
+		if (portal_admin() && $is_user) {
+			return true;
+		} else return false;
 	}
 
 // CONTROLLERS
@@ -40,6 +94,7 @@
     // Route: /wp-json/portal/users
     // Description: Get All Portal Users
     // Protected: True
+	// Accessible By: Admin Only
     
 	function get_portal_users() {
 		
@@ -65,6 +120,7 @@
     // Route: /wp-json/portal/user
     // Description: Create Portal User
     // Protected: True
+	// Accessible By: Admin Only
     
 	function create_portal_user($req) {
 		
@@ -153,6 +209,7 @@
     // Route: /wp-json/portal/user/{id}
     // Description: Update Portal User by ID
     // Protected: True
+	// Accessible By: Admin Or Portal User
     
 	function update_portal_user($req) {
 		// Get Params ID
@@ -268,6 +325,7 @@
     // Route: /wp-json/portal/user/{id}
     // Description: Delete Portal User
     // Protected: True
+	// Accessible By: Admin Or Portal User
     
 	function delete_portal_user($req) {
 		// Get Params ID
@@ -322,10 +380,66 @@
 		return rest_ensure_response(['message' => 'portal user deleted successfully.', 'data' => ['id' => $user_id]]);
 	};
 
+
+	// Method: POST
+    // Route: /wp-json/portal/user/login
+    // Description: Portal User Login
+    // Protected: False
+	// Accessible By: Public
+
+	function login_portal_user($req) {
+		// Get Body Email
+		
+		$body = json_decode($req->get_body());
+		$email = $body->email ?? NULL;
+		$password = $body->password ?? NULL;
+		
+		// Check That Email And Password Is In Body.  If Not, Throw Error
+		
+		if (!$email || !$password) {
+			return new WP_Error('email and temporary password required', 'the portal user email and temporary password that was sent to the users email must be provided.', ['status' => 400]);
+		}
+		
+		// Define Wordpress Database Methods And Database Table
+		
+		global $wpdb;
+		$portal_table_name = $wpdb->prefix . "portal_users";
+		$portal_users = $wpdb->get_results($wpdb->prepare("SELECT * FROM ". $portal_table_name));
+		
+		// Check If Portal Table Is Empty
+
+		if ($portal_users === null || count($portal_users) === 0) {
+			return new WP_Error('error in password reset', 'portal user does not exist as portal users table is currently empty', ['status' => 400]);
+		} 
+
+		// Loop Through Portal Users In Table And Find User Corresponding To Email
+		
+		foreach($portal_users as $user) {
+			if (strtolower($user->email) === strtolower($email)) {
+
+				// Check That Passwords Match
+
+				$password_valid = wp_check_password($password, $user->password);
+
+				if (!$password_valid) {
+					return new WP_Error('password error', 'incorrect password entered', ['status' => 401]);
+				} else {
+					// Provide Token via HTTP Only Cookie
+					return rest_ensure_response(['message' => 'portal user logged in successfully.', 'data' => ['id' => $user->id]]);
+				}
+			}
+		}
+		
+		// If No Table Row Was Found With Corresponding Email, Throw Error
+		
+		return new WP_Error('cannot find user', 'no portal user with corresponding email exists', ['status' => 400]);
+	}
+
 	// Method: POST
     // Route: /wp-json/portal/user/forgot
     // Description: Forgot Password Provide Email For Recovery
     // Protected: False
+	// Accessible By: Public
     
 	function forgot_password_portal_user($req) {
 		// Get Body Email
@@ -377,60 +491,6 @@
 		return new WP_Error('cannot find corresponding email', 'no portal user with corresponding email exists', ['status' => 400]);
 	}
 
-	// Method: POST
-    // Route: /wp-json/portal/user/reset
-    // Description: Reset Password After Providing Temporary Password
-    // Protected: False
-    
-	function reset_portal_user_password($req) {
-		// Get Body Email
-		
-		$body = json_decode($req->get_body());
-		$email = $body->email ?? NULL;
-		$password = $body->password ?? NULL;
-		
-		// Check That Email And Password Is In Body.  If Not, Throw Error
-		
-		if (!$email || !$password) {
-			return new WP_Error('email and temporary password required', 'the portal user email and temporary password that was sent to the users email must be provided.', ['status' => 400]);
-		}
-		
-		// Define Wordpress Database Methods And Database Table
-		
-		global $wpdb;
-		$portal_table_name = $wpdb->prefix . "portal_users";
-		$portal_users = $wpdb->get_results($wpdb->prepare("SELECT * FROM ". $portal_table_name));
-		
-		// Check If Portal Table Is Empty
-
-		if ($portal_users === null || count($portal_users) === 0) {
-			return new WP_Error('error in password reset', 'portal user does not exist as portal users table is currently empty', ['status' => 400]);
-		} 
-		
-		// Loop Through Portal Users In Table And Find User Corresponding To Email
-		
-		foreach($portal_users as $user) {
-			if (strtolower($user->email) === strtolower($email)) {
-				// Check That Passwords Match
-				// $password_valid = wp_check_password($password, $user->password);
-				// if (!$password_valid) {
-				// 	return new WP_Error('error in password reset', 'user provided temporary password does not match temporary password that was sent to users email.', ['status' => 401]);
-				// } 
-				// Show is_active User Field In Table Row Set To 1(True) To Indicate The User Was Active In Setting Up Their User Account
-				$wpdb->update($portal_table_name, array(
-					'is_active' => 1,
-				),
-					array('id' => $user->id)
-				);
-				return rest_ensure_response(['message' => 'portal user password reset successfully.', 'data' => ['email' => strtolower($email)]]);
-			}
-		}
-		
-		// If No Table Row Was Found With Corresponding Email, Throw Error
-		
-		return new WP_Error('cannot find corresponding email', 'no portal user with corresponding email exists', ['status' => 400]);
-	}
-
 // ROUTES
 
 	add_action( 'rest_api_init', function () { 
@@ -439,7 +499,7 @@
 		
 		register_rest_route( 'portal', '/users', [
 			'methods' => 'GET',
-			'permission_callback' => 'portal_authorized',
+			'permission_callback' => 'portal_admin',
 			'callback' => 'get_portal_users'
 		]);
 		
@@ -447,7 +507,7 @@
 		
 		register_rest_route( 'portal', '/user', [
 			'methods' => 'POST',
-			'permission_callback' => 'portal_authorized',
+			'permission_callback' => 'portal_admin',
 			'callback' => 'create_portal_user'
 		]);
 		
@@ -466,6 +526,13 @@
 			'permission_callback' => 'portal_authorized',
 			'callback' => 'delete_portal_user'
 		]);
+
+		// Login Portal User
+
+		register_rest_route( 'portal', '/user/login', [
+			'methods' => 'POST',
+			'callback' => 'login_portal_user'
+		]);
 		
 		// Portal User Forgot Temporary Password Create
 		
@@ -474,11 +541,5 @@
 			'callback' => 'forgot_password_portal_user'
 		]);
 		
-		// Portal User Password Reset After Verifying Temporary Password
-		
-		register_rest_route( 'portal', '/user/reset', [
-			'methods' => 'POST',
-			'callback' => 'reset_portal_user_password'
-		]);
 	});
 ?>
