@@ -88,6 +88,12 @@
 		} else return false;
 	}
 
+// RANDOM PASSWORD GENERATOR
+
+	function random_password_generate() {
+		return wp_generate_password();
+	}
+
 // CONTROLLERS
 
     // Method: GET
@@ -131,11 +137,10 @@
 		$last_name = $params->last_name ?? NULL;
 		$company = $params->company ?? NULL;
 		$email = $params->email ?? NULL;
-		$password = $params->password ?? NULL;
 		
 		// Check If Any Required Fields Are Blank.  Error Thrown If Any Required Fields Are Empty
 		
-		if (!$first_name || !$last_name || !$company || !$email || !$password) {
+		if (!$first_name || !$last_name || !$company || !$email) {
 			return new WP_Error('incomplete fields', 'please fill out the `first_name`, `last_name`, `company`, `email`, and `password` fields to register portal user.', ['status' => 400]);
 		}
 		
@@ -165,9 +170,13 @@
 			}
 		}
 		
+		// Random Password Generation
+		
+		$random_password = random_password_generate();
+		
 		// Password Hashing
 		
-		$hashed_password = wp_hash_password($password);
+		$hashed_password = wp_hash_password($random_password);
 		
 		// Created At Time
 		
@@ -194,7 +203,7 @@
 		if (count($updated_portal_users) != 0) {
 			foreach($updated_portal_users as $user) {
 				if ($user->first_name === $first_name && $user->last_name === $last_name && $user->email === $email) {
-					return rest_ensure_response(['message' => 'portal user created successfully', 'data' => ['id' => $user->id]]);
+					return rest_ensure_response(['message' => 'portal user created successfully', 'data' => ['id' => $user->id, 'password' => $random_password]]);
 				}
 			}
 		}
@@ -469,11 +478,11 @@
 		
 		foreach($portal_users as $user) {
 			if (strtolower($user->email) === strtolower($email)) {
-                // Generate Password
-                // $temporary_password = **Random Generating Characters Algorithm
+                // Random Temporary Password Generation
+				// $random_password = random_password_generate();
                 // **Email $temporary_password Via Email API
                 // Hash Temporary Password To Store In User Table Row
- 				//$hashed_password = wp_hash_password($temporary_password);
+ 				//$hashed_password = wp_hash_password($random_password);
  				// Update User Table Row With Temporary Password
  				//$updated_at = current_time('mysql', false);
  				// $wpdb->update($portal_table_name, array(
