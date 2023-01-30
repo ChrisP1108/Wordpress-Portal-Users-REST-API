@@ -118,7 +118,7 @@
 		// Check That Admin Username And Password Is In Body.  If Not, Throw Error
 		
 		if (!$admin_email || !$admin_password) {
-			return new WP_Error('no cookie. `admin_username` and `admin_password` fields required', 'admin username and password must be provided to execute this action since no cookie was found.', ['status' => 401]);
+			return new WP_Error('no portal admin cookie. `admin_username` and `admin_password` fields required', 'admin username and password must be provided to execute this action since no portal admin cookie was found.', ['status' => 401]);
 		}
 		
 		// Loop Through Portal Users In Table And Find User Corresponding To Email
@@ -193,9 +193,9 @@
 
 // CONTROLLERS
 
-    // Method: GET
-    // Route: /wp-json/portal/users
-    // Description: Get All Portal Users
+    // Method: POST
+    // Route: /wp-json/portal/admin
+    // Description: Portal Admin Login / Retrieve All Portal Users
     // Protected: True
 	// Accessible By: Admin Only
     
@@ -210,11 +210,11 @@
 		// Check If Portal Table Is Empty
 
 		if ($portal_users === null || count($portal_users) === 0) {
-			return rest_ensure_response(['message' => 'portal users table is currently empty.', 'data' => []]);
+			return rest_ensure_response(['message' => 'portal admin logged in successfully. portal users table is currently empty.', 'data' => []]);
 		} else {
 			
 		// Return Portal Users If Found In Table
-			return rest_ensure_response(['message' => 'portal users data retrieved successfully.', 'data' => $portal_users]);
+			return rest_ensure_response(['message' => 'portal admin logged in successfully. portal users data retrieved successfully.', 'data' => $portal_users]);
 		}
 	};
 
@@ -513,7 +513,7 @@
 
 	// Method: POST
     // Route: /wp-json/portal/user/login
-    // Description: Portal User Login
+    // Description: Portal User Login / Get Portal User Data Upon Login
     // Protected: False
 	// Accessible By: Public
 
@@ -632,10 +632,10 @@
 
 	add_action( 'rest_api_init', function () { 
 		
-		// Get Portal Users
+		// Admin Portal Login / Get Portal Users
 		
-		register_rest_route( 'portal', '/users', [
-			'methods' => 'GET',
+		register_rest_route( 'portal', '/admin', [
+			'methods' => 'POST',
 			'permission_callback' => 'portal_admin',
 			'callback' => 'get_portal_users'
 		]);
