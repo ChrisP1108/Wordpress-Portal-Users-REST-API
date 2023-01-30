@@ -31,12 +31,12 @@
 // COOKIE GENERATOR
 
 	function generate_cookie($id, $is_admin) {
+		$id_scrambled = intval($id * 42);
 		// Sets Cookie Based On If User Is Admin Or Portal User
-		$id_scrambled = strval((intval($id) * 1029) / 23.444);
 		if ($is_admin) {
-			setcookie('portal_admin', $id_scrambled, time() + ( 30 * DAY_IN_SECONDS ));
+			setcookie('portal_admin', $id_scrambled, time() + ( 7 * DAY_IN_SECONDS ), '/', '', 1, true);
 		} else {
-			setcookie('portal_user', $id_scrambled, time() + ( 30 * DAY_IN_SECONDS ));
+			setcookie('portal_user', $id_scrambled, time() + ( 7 * DAY_IN_SECONDS ), '/', '', 1, true);
 		}
 	}
 
@@ -44,18 +44,37 @@
 		// Check For Admin Cookie
 		
 		if ($is_admin && isset($_COOKIE["portal_admin"])) {
-			return strval(($_COOKIE["portal_admin"] * 23.444) / 1029);
+			return strval($_COOKIE["portal_admin"] / 42);
 		}
 		
 		// Check For User Cookie
 		
 		if (!$is_admin && isset($_COOKIE["portal_user"])) {
-			return strval(($_COOKIE["portal_user"] * 23.444) / 1029);
+			return strval($_COOKIE["portal_user"] / 42);
 		}
 		
 		// Return False If No Valid Cookies Present
 		
 		return false;
+	}
+
+	function destroy_cookie() {
+		
+		// Remove Cookie Based On If User Has Admin Or Portal User Cookie To Logout
+		
+		if (isset($_COOKIE["portal_admin"])) {
+			setcookie('portal_admin', 'logged_out', time() - 3600, '/', '', 0);
+			return rest_ensure_response(['message' => 'portal admin logged out successfully.']);
+		}
+		
+		if (isset($_COOKIE["portal_user"])) {
+			setcookie('portal_user', 'logged_out', time() - 3600, '/', '', 0);
+			return rest_ensure_response(['message' => 'portal user logged out successfully.']);
+		}
+		
+		// If No Admin Or Portal User Cookies Found, Throw Error
+		
+		return new WP_Error('no portal cookies found', 'unable to perform logout as no portal admin or user cookie found', ['status' => 400]);
 	}
 
 // AUTHENTICATION
@@ -99,7 +118,7 @@
 		// Check That Admin Username And Password Is In Body.  If Not, Throw Error
 		
 		if (!$admin_email || !$admin_password) {
-			return new WP_Error('no cookie. admin username and password required', 'admin username and password must be provided to execute this action since no cookie was found.', ['status' => 401]);
+			return new WP_Error('no cookie. `admin_username` and `admin_password` fields required', 'admin username and password must be provided to execute this action since no cookie was found.', ['status' => 401]);
 		}
 		
 		// Loop Through Portal Users In Table And Find User Corresponding To Email
@@ -308,7 +327,7 @@
 		$cookie_id = verify_cookie(false);
 
 		if ($is_admin === false && $cookie_id !== false && strval($cookie_id) !== strval($user_id)) {
-			return new WP_Error('error updating user', 'portal user can only modify data corresponding to their account only.', ['status' => 401]);
+			return new WP_Error('error updating user', 'portal user can only modify data corresponding to their account.', ['status' => 401]);
 		}
 		
 		// Get Body Data
@@ -536,7 +555,13 @@
 					return new WP_Error('password error', 'incorrect password entered', ['status' => 401]);
 				} else {
 					generate_cookie($user->id, false);
-					return rest_ensure_response(['message' => 'portal user logged in successfully.', 'data' => ['id' => $user->id]]);
+					return rest_ensure_response(['message' => 'portal user logged in successfully.', 'data' => [
+						'id' => $user->id, 
+						'first_name' => $user->first_name,
+						'last_name' => $user->last_name,
+						'company' => $user->company,
+						'email' => $user->email
+					]]);
 				}
 			}
 		}
@@ -651,6 +676,13 @@
 		register_rest_route( 'portal', '/user/forgot', [
 			'methods' => 'POST',
 			'callback' => 'forgot_password_portal_user'
+		]);
+		
+		// Portal User/Admin Logout
+		
+		register_rest_route( 'portal', '/logout', [
+			'methods' => 'POST',
+			'callback' => 'destroy_cookie'
 		]);
 		
 	});
