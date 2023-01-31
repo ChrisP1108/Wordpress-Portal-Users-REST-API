@@ -31,7 +31,43 @@
 // COOKIE GENERATOR
 
 	function generate_cookie($id, $is_admin) {
-		$id_scrambled = intval($id * 42);
+		$id_multiplied = strval(intval($id) * 237);
+		$id_split = str_split($id_multiplied);
+		$id_scrambled = '';
+		foreach($id_split as $int) {
+			switch ($int) {
+				case "0":
+					$id_scrambled = $id_scrambled . "$";
+					break;	
+				case "1":
+					$id_scrambled = $id_scrambled . "e";
+					break;	
+				case "2":
+					$id_scrambled = $id_scrambled . "*";
+					break;
+				case "3":
+					$id_scrambled = $id_scrambled . "7";
+					break;	
+				case "4":
+					$id_scrambled = $id_scrambled . "W";
+					break;
+				case "5":
+					$id_scrambled = $id_scrambled . "1";
+					break;
+				case "6":
+					$id_scrambled = $id_scrambled . "?";
+					break;
+				case "7":
+					$id_scrambled = $id_scrambled . "p";
+					break;
+				case "8":
+					$id_scrambled = $id_scrambled . "Z";
+					break;
+				case "9":
+					$id_scrambled = $id_scrambled . "3";
+					break;
+			}
+		}
 		// Sets Cookie Based On If User Is Admin Or Portal User
 		if ($is_admin) {
 			setcookie('portal_admin', $id_scrambled, time() + ( 7 * DAY_IN_SECONDS ), '/', '', 1, true);
@@ -40,17 +76,60 @@
 		}
 	}
 
+	function unscramble_cookie($scrambled_cookie) {
+		$split_scrambled_cookie = str_split($scrambled_cookie);
+		$id_unscrambled = '';
+		foreach($split_scrambled_cookie as $int) {
+			switch ($int) {
+				case "$":
+					$id_unscrambled = $id_unscrambled . "0";
+					break;	
+				case "e":
+					$id_unscrambled = $id_unscrambled . "1";
+					break;	
+				case "*":
+					$id_unscrambled = $id_unscrambled . "2";
+					break;
+				case "7":
+					$id_unscrambled = $id_unscrambled . "3";
+					break;	
+				case "W":
+					$id_unscrambled = $id_unscrambled . "4";
+					break;
+				case "1":
+					$id_unscrambled = $id_unscrambled . "5";
+					break;
+				case "?":
+					$id_unscrambled = $id_unscrambled . "6";
+					break;
+				case "p":
+					$id_unscrambled = $id_unscrambled . "7";
+					break;
+				case "Z":
+					$id_unscrambled = $id_unscrambled . "8";
+					break;
+				case "3":
+					$id_unscrambled = $id_unscrambled . "9";
+					break;
+			}
+		}
+		
+		return strval(intval($id_unscrambled) / 237);
+		
+	}
+
     function verify_cookie($is_admin) {
+		
 		// Check For Admin Cookie
 		
 		if ($is_admin && isset($_COOKIE["portal_admin"])) {
-			return strval($_COOKIE["portal_admin"] / 42);
+			return unscramble_cookie($_COOKIE["portal_admin"]);
 		}
 		
 		// Check For User Cookie
 		
 		if (!$is_admin && isset($_COOKIE["portal_user"])) {
-			return strval($_COOKIE["portal_user"] / 42);
+			return unscramble_cookie($_COOKIE["portal_user"]);
 		}
 		
 		// Return False If No Valid Cookies Present
