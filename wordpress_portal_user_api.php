@@ -297,9 +297,16 @@
 		// Loops Through Table.  Checks That Row For Data Was Inserted
 		
 		if (count($updated_portal_users) != 0) {
-			foreach($updated_portal_users as $user) {
-				if ($user->first_name === $first_name && $user->last_name === $last_name && $user->email === $email) {
-					return rest_ensure_response(['message' => 'portal user created successfully', 'data' => ['id' => $user->id, 'password' => $random_password]]);
+			foreach($updated_portal_users as $usercheck) {
+				if ($usercheck->first_name === $first_name && $usercheck->last_name === $last_name && $usercheck->email === $email) {
+					
+					// Checks Password.  If No Match, Throw Error
+					
+					if (wp_check_password($random_password, $usercheck->password)) {
+						return rest_ensure_response(['message' => 'portal user created successfully', 'data' => ['id' => $usercheck->id, 'password' => $random_password]]);
+					} else {
+						return new WP_Error('error with portal user password', 'the password stored does not match up.  try regenerating password', ['status' => 500]);
+					}
 				}
 			}
 		}
@@ -362,6 +369,10 @@
 		foreach($portal_users as $user) {
 			if (strval($user->id) === strval($user_id)) {
 
+				// Declare Hashed Password Variable
+
+				$hashed_password = null;
+
 				// Extracts Existing Values From Request Body Fields That Were Not Passed In
 
 				if (!$first_name) {
@@ -387,10 +398,10 @@
 					$email = $user->email;
 				}
 				if ($password) {
-					$password = wp_hash_password($password);
+					$hashed_password = wp_hash_password($password);
 				}
 				if (!$password) {
-					$password = $user->password;
+					$hashed_password = $user->password;
 				}
 
 				// Update Portal User Row
@@ -409,7 +420,7 @@
 					'last_name' => $last_name, 
 					'company' => $company, 
 					'email' => $email,
-					'password' => $password,
+					'password' => $hashed_password,
 					'updated' => $updated_at,
 					'is_active' => 1
 				),
@@ -422,11 +433,16 @@
 
 				// Loops Through Table.  Checks That Row For Data Was Inserted
 
-				if (count($updated_portal_users) != 0) {
-					foreach($updated_portal_users as $usercheck) {
-						if ($usercheck->first_name === $first_name && $usercheck->last_name === $last_name && $usercheck->company === $company && $usercheck->email === $email) {
-							return rest_ensure_response(['message' => 'portal user updated successfully.', 'data' => ['id' => $user->id]]);
+				foreach($updated_portal_users as $usercheck) {
+					if ($usercheck->first_name === $first_name && $usercheck->last_name === $last_name && $usercheck->company === $company && $usercheck->email === $email) {
+						
+						// Check Hashed Password In Row If Password Field Was Passed In To Update
+	
+						if ($password && !wp_check_password($password, $usercheck->password)) {
+							return new WP_Error('error updating password', 'portal user password did not update correctly.  try regenerating a new temporary password.', ['status' => 500]);
 						}
+
+						return rest_ensure_response(['message' => 'portal user updated successfully.', 'data' => ['id' => $usercheck->id]]);
 					}
 				}
 
@@ -527,7 +543,7 @@
 		// Check That Email And Password Is In Body.  If Not, Throw Error
 		
 		if (!$email || !$password) {
-			return new WP_Error('email and temporary password required', 'the portal user email and temporary password that was sent to the users email must be provided.', ['status' => 400]);
+			return new WP_Error('email and password required', 'the portal user email and password must be provided to login', ['status' => 400]);
 		}
 		
 		// Define Wordpress Database Methods And Database Table
@@ -539,7 +555,7 @@
 		// Check If Portal Table Is Empty
 
 		if ($portal_users === null || count($portal_users) === 0) {
-			return new WP_Error('error in password reset', 'portal user does not exist as portal users table is currently empty', ['status' => 400]);
+			return new WP_Error('no portal users found', 'portal user does not exist as portal users table is currently empty', ['status' => 400]);
 		} 
 
 		// Loop Through Portal Users In Table And Find User Corresponding To Email
@@ -628,6 +644,75 @@
 		return new WP_Error('cannot find corresponding email', 'no portal user with corresponding email exists', ['status' => 400]);
 	}
 
+	// Method: GET
+    // Route: /wp-json/portal/user/{id}/resetpassword
+    // Description: Regenerate New Temporary Password For Portal User
+    // Protected: True
+	// Accessible By: Admin Only
+    
+	function reset_portal_user_password($req) {
+		// Get Params ID
+		
+		$user_id = $req->get_params()['id'];
+		
+		// Define Wordpress Database Methods And Database Table
+		
+		global $wpdb;
+		$portal_table_name = $wpdb->prefix . "portal_users";
+		$portal_users = $wpdb->get_results($wpdb->prepare("SELECT * FROM ". $portal_table_name));
+		
+		// Check If Portal Table Is Empty
+
+		if ($portal_users === null || count($portal_users) === 0) {
+			return new WP_Error('error in resetting password', 'portal user does not exist as portal users table is currently empty', ['status' => 400]);
+		} 
+		
+		// Loop Through Portal Users In Table And Find User Corresponding To Request Parameter ID
+		
+		foreach($portal_users as $user) {
+			if (strval($user->id) === strval($user_id)) {
+                
+				// Random Password Generation
+		
+				$random_password = wp_generate_password();
+
+				// Update Portal User Row
+
+				$updated_at = current_time('mysql', false);
+
+				$wpdb->update($portal_table_name, array(
+					'first_name' => $user->first_name, 
+					'last_name' => $user->last_name, 
+					'company' => $user->company, 
+					'email' => $user->email,
+					'password' => wp_hash_password($random_password),
+					'updated' => $updated_at,
+					'is_active' => 0
+				),
+					array('id' => $user_id)
+				);
+
+				$updated_portal_users = $wpdb->get_results($wpdb->prepare("SELECT * FROM ". $portal_table_name));
+
+				// Loops Through Table.  Checks That Row For Data Was Inserted.  Otherwise Error Thrown After Iterating Through Loop
+
+				foreach($updated_portal_users as $usercheck) {
+					if (strtolower($usercheck->id) === strtolower($user_id)) {
+						if (wp_check_password($random_password, $usercheck->password)) {
+							return rest_ensure_response(['message' => 'portal user password reset successfully.', 'data' => ['id' => $user->id, 'password' => $random_password]]);
+						}
+					} 
+				}
+
+				return new WP_Error('error inserting row', 'an error occured resetting portal user password in mysql', ['status' => 500]);
+			}
+		}
+		
+		// If No Table Row Was Found With Corresponding ID, Throw Error
+		
+		return new WP_Error('cannot find user', 'no portal user with corresponding ID exists', ['status' => 400]);
+	}
+
 // ROUTES
 
 	add_action( 'rest_api_init', function () { 
@@ -678,6 +763,14 @@
 			'callback' => 'forgot_password_portal_user'
 		]);
 		
+		// Portal Admin Create New Temporary Portal User Password
+		
+		register_rest_route( 'portal', '/user/passwordreset/(?P<id>[a-zA-Z0-9-]+)', [
+			'methods' => 'GET',
+			'permission_callback' => 'portal_admin',
+			'callback' => 'reset_portal_user_password'
+		]);
+		
 		// Portal User/Admin Logout
 		
 		register_rest_route( 'portal', '/logout', [
@@ -686,4 +779,18 @@
 		]);
 		
 	});
+
+// PAGE ACCESS RESTRICTIONS
+
+	// Allows Access To Portal Pages Only If Portal User Or Portal Admin Cookie Present. If Not, Redirected To Portal User Login
+	
+	add_action('template_redirect', function() {
+		if (is_page('portal-page-1') || is_page('portal-page-2')) {
+			if (!verify_cookie(true) && !verify_cookie(false)) {
+				wp_redirect( 'http://localhost/wordpress_test/login-page/' ); 
+				exit();
+			}
+		}
+	});
+	
 ?>
