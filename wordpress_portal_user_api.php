@@ -31,8 +31,16 @@
 // COOKIE GENERATOR
 
 	function generate_cookie($id, $is_admin) {
+
 		$id_multiplied = strval(intval($id) * 237);
-		$id_split = str_split($id_multiplied);
+
+		// Salt Concatenation Before Scrambling
+
+		$id_salted = strval(rand(1000, 9999)) . $id_multiplied . strval(rand(1000, 9999));
+
+		// Cookie Scrambling Algorithm
+
+		$id_split = str_split($id_salted);
 		$id_scrambled = '';
 		foreach($id_split as $int) {
 			switch ($int) {
@@ -68,7 +76,9 @@
 					break;
 			}
 		}
+
 		// Sets Cookie Based On If User Is Admin Or Portal User
+
 		if ($is_admin) {
 			setcookie('portal_admin', $id_scrambled, time() + ( 7 * DAY_IN_SECONDS ), '/', '', 1, true);
 		} else {
@@ -77,8 +87,17 @@
 	}
 
 	function unscramble_cookie($scrambled_cookie) {
+
+		// Salt Removal
+
+		$scrambled_cookie = substr($scrambled_cookie, 4, -4);
+
+		// Cookie Unscrambling Algorithm
+
 		$split_scrambled_cookie = str_split($scrambled_cookie);
+		
 		$id_unscrambled = '';
+		
 		foreach($split_scrambled_cookie as $int) {
 			switch ($int) {
 				case "$":
@@ -115,7 +134,6 @@
 		}
 		
 		return strval(intval($id_unscrambled) / 237);
-		
 	}
 
     function verify_cookie($is_admin) {
