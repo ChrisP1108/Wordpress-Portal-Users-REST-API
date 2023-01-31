@@ -220,7 +220,7 @@
 		$admin_table_name = $wpdb->prefix . "users";
 		$admins = $wpdb->get_results($wpdb->prepare("SELECT * FROM ". $admin_table_name));
 		
-		// Check If Portal Table Is Empty.  Deny Access If Empty
+		// Check If Admin Table Is Empty.  Deny Access If Empty
 
 		if ($admins === null || count($admins) === 0) {
 			return new WP_Error('admin username and password not found', 'admin username and password not found as admin users table is currently empty', ['status' => 400]);
@@ -228,9 +228,9 @@
 		
 		// Check If Admin Has Valid Cookie.  If So, Return True
 		
-		$cookie_id = verify_cookie(true);
+		$valid_admin_cookie = verify_cookie(true);
 		
-		if ($cookie_id) {
+		if ($valid_admin_cookie) {
 			return true;
 		}
 		
@@ -248,7 +248,7 @@
 			return new WP_Error('no portal admin cookie. `admin_username` and `admin_password` fields required', 'admin username and password must be provided to execute this action since no portal admin cookie was found.', ['status' => 401]);
 		}
 		
-		// Loop Through Portal Users In Table And Find User Corresponding To Email
+		// Loop Through Admins In Table And Find Admin Corresponding To Email
 		
 		foreach($admins as $admin) {
 			if (strtolower($admin->user_email) === strtolower($admin_email)) {
@@ -260,7 +260,6 @@
 				if (!$password_valid) {
 					return new WP_Error('invalid admin password', 'admin password is invalid.', ['status' => 401]);
 				} else {
-					generate_cookie($admin->ID, true);
 					return true;
 				}
 			}
@@ -318,23 +317,69 @@
     // Protected: True
 	// Accessible By: Admin Only
     
-	function get_portal_users() {
+	function get_portal_users($req) {
+
+		$body = json_decode($req->get_body());
+		$admin_email = $body->admin_email ?? NULL;
+		$admin_password = $body->admin_password ?? NULL;
+		
+		// Check That Email And Password Is In Body.  If Not, Throw Error
+		
+		if (!$admin_email || !$admin_password) {
+			return new WP_Error('admin email and admin password required', 'the portal admin email and password must be provided to login to admin dashboard', ['status' => 400]);
+		}
 		
 		// Define Wordpress Database Methods And Database Table
 		
 		global $wpdb;
-		$portal_table_name = $wpdb->prefix . "portal_users";
-		$portal_users = $wpdb->get_results($wpdb->prepare("SELECT * FROM ". $portal_table_name));
-		
-		// Check If Portal Table Is Empty
+		$admin_table_name = $wpdb->prefix . "users";
+		$admins = $wpdb->get_results($wpdb->prepare("SELECT * FROM ". $admin_table_name));
 
-		if ($portal_users === null || count($portal_users) === 0) {
-			return rest_ensure_response(['message' => 'portal admin logged in successfully. portal users table is currently empty.', 'data' => []]);
-		} else {
-			
-		// Return Portal Users If Found In Table
-			return rest_ensure_response(['message' => 'portal admin logged in successfully. portal users data retrieved successfully.', 'data' => $portal_users]);
+		// Check If Portal Table Is Empty.  Deny Access If Empty
+
+		if ($admins === null || count($admins) === 0) {
+			return new WP_Error('admin username and password not found', 'admin username and password not found as admin users table is currently empty', ['status' => 400]);
 		}
+
+		// Init Admin ID Variable
+
+		$admin_id = null;
+
+		// Loop Through Admins In Table And Find Admin Corresponding To Email
+		
+		foreach($admins as $admin) {
+			if (strtolower($admin->user_email) === strtolower($admin_email)) {
+
+				// Check That Passwords Match
+
+				$password_valid = wp_check_password($admin_password, $admin->user_pass);
+
+				if (!$password_valid) {
+					return new WP_Error('invalid admin password', 'admin password is invalid.', ['status' => 401]);
+				} else {
+					$admin_id = $admin->ID;
+				}
+			}
+		}
+
+		if ($admin_id) {
+			$portal_table_name = $wpdb->prefix . "portal_users";
+			$portal_users = $wpdb->get_results($wpdb->prepare("SELECT * FROM ". $portal_table_name));
+			
+			// Check If Portal Table Is Empty
+
+			if ($portal_users === null || count($portal_users) === 0) {
+				generate_cookie($admin->ID, true);
+				return rest_ensure_response(['message' => 'portal admin logged in successfully. portal users table is currently empty.', 'data' => []]);
+			} else {
+				
+			// Return Portal Users If Found In Table
+				generate_cookie($admin->ID, true);
+				return rest_ensure_response(['message' => 'portal admin logged in successfully. portal users data retrieved successfully.', 'data' => $portal_users]);
+			}
+		}
+
+		return new WP_Error('invalid admin email', 'no admin with found with corresponding email.', ['status' => 401]);
 	};
 
 	// Method: POST
