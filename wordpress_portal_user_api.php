@@ -28,7 +28,7 @@
 		dbDelta( $sql );
 	} 
 
-// COOKIE GENERATOR
+// COOKIES
 
 	function generate_cookie($id, $is_admin) {
 
@@ -136,13 +136,13 @@
 		return strval(intval($id_unscrambled) / 237);	
 	}
 
-    function verify_cookie($is_admin) {
+    function verify_cookie($type) {
 
 		global $wpdb;
 		
 		// Check For Admin Cookie And See If Id In Cookie Corresponds To An Admin
 		
-		if ($is_admin && isset($_COOKIE["portal_admin"])) {
+		if ($type === 'admin' && isset($_COOKIE["portal_admin"])) {
 			$admin_table_name = $wpdb->prefix . "users";
 			$admins = $wpdb->get_results($wpdb->prepare("SELECT * FROM ". $admin_table_name));
 
@@ -161,7 +161,7 @@
 		
 		// Check For Portal User Cookie
 		
-		if (!$is_admin && isset($_COOKIE["portal_user"])) {
+		if ($type === 'user' && isset($_COOKIE["portal_user"])) {
 			$portal_table_name = $wpdb->prefix . "portal_users";
 			$portal_users = $wpdb->get_results($wpdb->prepare("SELECT * FROM ". $portal_table_name));
 
@@ -208,6 +208,78 @@
 		return new WP_Error('no portal cookies found', 'unable to perform logout as no portal admin or user cookie found', ['status' => 400]);
 	}
 
+// SEND EMAIL
+
+	function send_portal_user_email($type, $email, $password) {
+
+		// Generate Message Based On Type (Create User, Forgotten Password, Admin Regenerate New User Password)
+
+		$subject_message = null;
+		$type_message = null;
+
+		switch($type) {
+			case 'created':
+				$subject_message = 'Magellan Portal User Created';
+				$type_message = 'You have been successfully registered to access the Magellan Portal';
+				break;
+			case 'forgot':
+				$subject_message = 'Magellan Portal User Password Recovery';
+				$type_message = 'You have requested to recover your forgotten password to the Magellan Portal';
+				break;
+			case 'regenerate':
+				$subject_message = 'Magellan Portal User Password Reset By Admin';
+				$type_message = 'The Magellan Portal Administrator has reset your password';
+				break;
+		}
+
+		// Check Arguments.  If Not All Required Arguments Present, Return False
+
+		if (!$type || !$email || !$password || !$subject_message || !$type_message) {
+			return false;
+		}
+
+		$html_email_template = '
+			<table width="600" border="0" cellspacing="0" cellpadding="0"> 
+				<tbody>
+					<tr>
+						<td colspan="3" style="background: #ffffff; Padding: 30px; " align="center"><img src=https://www.partnerwithmagellan.com/wp-content/uploads/2022/08/MAG-LOGO-HORZ-HEX-RevColor.svg width="320"  alt=""/></td>
+					</tr>
+					<tr>
+						<td height="43" colspan="3" style="padding-top:20px;">
+							<blockquote>
+								<p style="text-align: center;"><strong>Hello. '. $type_message . '. See login credentials below and url link to go to the portal login page.</strong></p>
+							</blockquote>
+						</td>
+					</tr>
+					<tr>
+						<td width="300" height="27" align="right"><p><strong>Email:</strong></p></td>
+						<td width="6">&nbsp;</td>
+						<td width="405">' . $email . '</td>
+					</tr>
+					<tr>
+						<td width="300" height="27" align="right"><p><strong>Password:</strong></p></td>
+						<td width="6">&nbsp;</td>
+						<td width="405">' . $password . '</td>
+					</tr>
+					<tr>
+						<td width="6">&nbsp;</td>
+						<td width="6">&nbsp;</td>
+						<td width="6">&nbsp;</td>
+      				</tr>
+					<tr>
+						<td width="300" height="27" align="right"><p><strong>Login Page Url:</strong></p></td>
+						<td width="6">&nbsp;</td>
+						<td width="405"><a href="http://www.google.com" target="_blank">http://www.google.com</a></td>
+				  	</tr>
+				</tbody>          
+			</table>
+		';
+
+		wp_mail($email, $subject_message, $html_email_template);
+
+		return true;
+	}
+
 // AUTHENTICATION
 
 	// Administrator Only 
@@ -228,7 +300,7 @@
 		
 		// Check If Admin Has Valid Cookie.  If So, Return True
 		
-		$valid_admin_cookie = verify_cookie(true);
+		$valid_admin_cookie = verify_cookie('admin');
 		
 		if ($valid_admin_cookie) {
 			return true;
@@ -290,7 +362,7 @@
 		
 		// Check If User Is Admin And Has Valid Cookie And The ID That Corresponds To It Is A Valid User Admin ID
 		
-		$cookie_admin_id = verify_cookie(true);
+		$cookie_admin_id = verify_cookie('admin');
 		
 		if ($cookie_admin_id) {
 			return true;
@@ -298,7 +370,7 @@
 		
 		// Check If User Is Portal User And Has Valid Cookie And The ID That Corresponds To It Is A Valid Portal User ID
 		
-		$cookie_portal_user_id = verify_cookie(false);
+		$cookie_portal_user_id = verify_cookie('user');
 		
 		if ($cookie_portal_user_id) {
 			return true;
@@ -467,6 +539,13 @@
 					// Checks Password.  If No Match, Throw Error
 					
 					if (wp_check_password($random_password, $usercheck->password)) {
+
+						// Send Email To Portal User
+
+						send_portal_user_email('created', $usercheck->email, $random_password);
+
+						// API Response
+
 						return rest_ensure_response(['message' => 'portal user created successfully', 'data' => ['id' => $usercheck->id, 'password' => $random_password]]);
 					} else {
 						return new WP_Error('error with portal user password', 'the password stored does not match up.  try regenerating password', ['status' => 500]);
@@ -494,8 +573,8 @@
 
 		// Makes Sure If User Is Portal User And Not Administrator That Their Cookie Id Corresponds With Parameter User ID So They Cannot Modify Another Users Data
 
-		$is_admin = verify_cookie(true);
-		$is_user = verify_cookie(false);
+		$is_admin = verify_cookie('admin');
+		$is_user = verify_cookie('user');
 
 		if (!$is_admin && $is_user && strval(unscramble_cookie($_COOKIE["portal_user"])) !== strval($user_id)) {
 			return new WP_Error('error updating user', 'portal user can only modify data corresponding to their account.', ['status' => 401]);
@@ -635,8 +714,8 @@
 
 		// Makes Sure If User Is Portal User And Not Administrator That Their Cookie Id Corresponds With Parameter User ID So They Cannot Modify Another Users Data
 
-		$is_admin = verify_cookie(true);
-		$is_user = verify_cookie(false);
+		$is_admin = verify_cookie('admin');
+		$is_user = verify_cookie('user');
 
 		if (!$is_admin && $is_user && strval(unscramble_cookie($_COOKIE["portal_user"])) !== strval($user_id)) {
 			return new WP_Error('error updating user', 'portal user can only modify data corresponding to their account.', ['status' => 401]);
@@ -740,7 +819,8 @@
 						'first_name' => $user->first_name,
 						'last_name' => $user->last_name,
 						'company' => $user->company,
-						'email' => $user->email
+						'email' => $user->email,
+						'is_active' => $user->is_active
 					]]);
 				}
 			}
@@ -786,19 +866,36 @@
 		foreach($portal_users as $user) {
 			if (strtolower($user->email) === strtolower($email)) {
                 // Random Temporary Password Generation
-				// $random_password = wp_generate_password();
-                // **Email $temporary_password Via Email API
+				
+				$random_password = wp_generate_password();
+
                 // Hash Temporary Password To Store In User Table Row
- 				//$hashed_password = wp_hash_password($random_password);
+
+ 				$hashed_password = wp_hash_password($random_password);
+
  				// Update User Table Row With Temporary Password
- 				//$updated_at = current_time('mysql', false);
- 				// $wpdb->update($portal_table_name, array(
-				//	'password' => $hashed_password,
-				//	'updated' => $updated_at,
-				//	'is_active' => 0
-				// ),
-				//	array('id' => $user->id)
-				// );
+
+ 				$updated_at = current_time('mysql', false);
+
+ 				$wpdb->update($portal_table_name, array(
+					'first_name' => $user->first_name,
+					'last_name' => $user->last_name,
+					'company' => $user->company,
+					'email' => $user->email,
+					'password' => $hashed_password,
+					'is_active' => 0,
+					'created' => $user->created,
+					'updated' => $updated_at,
+				),
+					array('id' => $user->id)
+				);
+
+				// Send Recovery Email To Portal User
+
+				send_portal_user_email('forgot', $user->email, $random_password);
+
+				// API Response
+
 				return rest_ensure_response(['message' => 'temporary password sent to corresponding email.', 'data' => ['email' => $email]]);
 			}
 		}
@@ -863,6 +960,13 @@
 				foreach($updated_portal_users as $usercheck) {
 					if (strtolower($usercheck->id) === strtolower($user_id)) {
 						if (wp_check_password($random_password, $usercheck->password)) {
+
+							// Send Email To Portal User
+
+							send_portal_user_email('regenerate', $usercheck->email, $random_password);
+
+							// API Response
+
 							return rest_ensure_response(['message' => 'portal user password reset successfully.', 'data' => ['id' => $user->id, 'password' => $random_password]]);
 						}
 					} 
@@ -950,7 +1054,7 @@
 	
 	add_action('template_redirect', function() {
 		if (is_page('portal-page-1') || is_page('portal-page-2')) {
-			if (!verify_cookie(true) && !verify_cookie(false)) {
+			if (!verify_cookie('admin') && !verify_cookie('user')) {
 				wp_redirect( 'http://localhost/wordpress_test/login-page/' ); 
 				exit();
 			}
