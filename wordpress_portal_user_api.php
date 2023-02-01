@@ -275,9 +275,18 @@
 			</table>
 		';
 
-		wp_mail($email, $subject_message, $html_email_template);
+		// Email Headers
 
-		return true;
+		$headers = 'From: portaladmin@partnerwithmagellan.com';
+		$headers = $headers . 'Content-Type: text/html; charset=iso-8859-1\n';
+
+		// Send Email
+
+		$send_email = wp_mail($email, $subject_message, $html_email_template, $headers);
+
+		// Check That Email Got Sent.  If So, True Is Returned.  Else False Is Returned
+
+		return $send_email;
 	}
 
 // AUTHENTICATION
@@ -540,9 +549,11 @@
 					
 					if (wp_check_password($random_password, $usercheck->password)) {
 
-						// Send Email To Portal User
+						// Send Email To Portal User.  If Email Fails, Throw Error
 
-						send_portal_user_email('created', $usercheck->email, $random_password);
+						if (!send_portal_user_email('created', $usercheck->email, $random_password)) {
+							return new WP_Error('error sending email', 'user added to table, but email did not send.  try regenerating password to resend another email to portal user', ['status' => 500, 'id' => $usercheck->id, 'password' => $random_password]);
+						}
 
 						// API Response
 
@@ -890,9 +901,11 @@
 					array('id' => $user->id)
 				);
 
-				// Send Recovery Email To Portal User
+				// Send Email To Portal User.  If Email Fails, Throw Error
 
-				send_portal_user_email('forgot', $user->email, $random_password);
+				if (!send_portal_user_email('forgot', $user->email, $random_password)) {
+					return new WP_Error('error sending email', 'new temporary user password hashed to table, but email did not send.  try again.', ['status' => 500, 'email' => $email]);
+				}
 
 				// API Response
 
@@ -961,9 +974,11 @@
 					if (strtolower($usercheck->id) === strtolower($user_id)) {
 						if (wp_check_password($random_password, $usercheck->password)) {
 
-							// Send Email To Portal User
+							// Send Email To Portal User.  If Email Fails, Throw Error
 
-							send_portal_user_email('regenerate', $usercheck->email, $random_password);
+							if (!send_portal_user_email('regenerate', $usercheck->email, $random_password)) {
+								return new WP_Error('error sending email', 'new temporary user password hashed to table, but email did not send.  try again.', ['status' => 500, 'id' => $user->id, 'password' => $random_password]);
+							}
 
 							// API Response
 
