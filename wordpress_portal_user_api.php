@@ -11,7 +11,7 @@
 	// Checks If Client Portal Users Database 'portal_users' Exists And Creates It If It Does Not Exist
 
 	if ($wpdb->get_var("SHOW TABLES LIKE '$portal_table_name'") != $portal_table_name) {
-		$sql = "CREATE TABLE $table_name (
+		$sql = "CREATE TABLE $portal_table_name (
 			id mediumint(11) NOT NULL AUTO_INCREMENT,
 			first_name varchar(100) NOT NULL,
 			last_name varchar(100) NOT NULL,
@@ -83,9 +83,9 @@
 		// Sets Cookie Based On If User Is Admin Or Portal User
 
 		if ($is_admin) {
-			setcookie('portal_admin', $id_scrambled, time() + ( 7 * DAY_IN_SECONDS ), '/', '', 1, true);
+			setcookie('portal_admin', $id_scrambled, time() + ( 7 * DAY_IN_SECONDS ), '/', '', 0, true);
 		} else {
-			setcookie('portal_user', $id_scrambled, time() + ( 7 * DAY_IN_SECONDS ), '/', '', 1, true);
+			setcookie('portal_user', $id_scrambled, time() + ( 7 * DAY_IN_SECONDS ), '/', '', 0, true);
 		}
 	}
 
@@ -151,7 +151,7 @@
 		
 		if ($type === 'admin' && isset($_COOKIE["portal_admin"])) {
 			$admin_table_name = $wpdb->prefix . "users";
-			$admins = $wpdb->get_results($wpdb->prepare("SELECT * FROM ". $admin_table_name));
+			$admins = $wpdb->get_results("SELECT * FROM ". $admin_table_name);
 
 			$admin_cookie_id = unscramble_portal_cookie($_COOKIE["portal_admin"]);
 		
@@ -170,7 +170,7 @@
 		
 		if ($type === 'user' && isset($_COOKIE["portal_user"])) {
 			$portal_table_name = $wpdb->prefix . "portal_users";
-			$portal_users = $wpdb->get_results($wpdb->prepare("SELECT * FROM ". $portal_table_name));
+			$portal_users = $wpdb->get_results("SELECT * FROM ". $portal_table_name);
 
 			$user_cookie_id = unscramble_portal_cookie($_COOKIE["portal_user"]);
 
@@ -262,23 +262,23 @@
 					</tr>
 					<tr>
 						<td width="300" height="27" align="right"><p><strong>Email:</strong></p></td>
-						<td width="6">&nbsp;</td>
+						<td width="6"> </td>
 						<td width="405">' . $email . '</td>
 					</tr>
 					<tr>
 						<td width="300" height="27" align="right"><p><strong>Password:</strong></p></td>
-						<td width="6">&nbsp;</td>
+						<td width="6"> </td>
 						<td width="405">' . $password . '</td>
 					</tr>
 					<tr>
-						<td width="6">&nbsp;</td>
-						<td width="6">&nbsp;</td>
-						<td width="6">&nbsp;</td>
+						<td width="6"> </td>
+						<td width="6"> </td>
+						<td width="6"> </td>
       				</tr>
 					<tr>
 						<td width="300" height="27" align="right"><p><strong>Login Page Url:</strong></p></td>
-						<td width="6">&nbsp;</td>
-						<td width="405"><a href="http://www.google.com" target="_blank">http://www.google.com</a></td>
+						<td width="6"> </td>
+						<td width="405"><a href="http://www.google.com" target="_blank" rel="noopener">http://www.google.com</a></td>
 				  	</tr>
 				</tbody>          
 			</table>
@@ -308,7 +308,7 @@
 		
 		global $wpdb;
 		$admin_table_name = $wpdb->prefix . "users";
-		$admins = $wpdb->get_results($wpdb->prepare("SELECT * FROM ". $admin_table_name));
+		$admins = $wpdb->get_results("SELECT * FROM ". $admin_table_name);
 		
 		// Check If Admin Table Is Empty.  Deny Access If Empty
 
@@ -389,7 +389,7 @@
 		// Check For Admin Credentials
 		
 		$admin_table_name = $wpdb->prefix . "users";
-		$admins = $wpdb->get_results($wpdb->prepare("SELECT * FROM ". $admin_table_name));
+		$admins = $wpdb->get_results("SELECT * FROM ". $admin_table_name);
 
 		if ($admin_email && $admin_password) {
 			foreach($admins as $admin) {
@@ -409,7 +409,7 @@
 		// If No Admin Credentials Found, Check User Credentials
 		
 		$portal_table_name = $wpdb->prefix . "portal_users";
-		$portal_users = $wpdb->get_results($wpdb->prepare("SELECT * FROM ". $portal_table_name));
+		$portal_users = $wpdb->get_results("SELECT * FROM ". $portal_table_name);
 
 		if ($user_email && $user_password) {
 			foreach($portal_users as $user) {
@@ -451,9 +451,9 @@
 		
 		global $wpdb;
 		$portal_table_name = $wpdb->prefix . "portal_users";
-		$portal_users = $wpdb->get_results($wpdb->prepare("SELECT * FROM ". $portal_table_name));
+		$portal_users = $wpdb->get_results("SELECT * FROM ". $portal_table_name);
 		$admin_table_name = $wpdb->prefix . "users";
-		$admins = $wpdb->get_results($wpdb->prepare("SELECT * FROM ". $admin_table_name));
+		$admins = $wpdb->get_results("SELECT * FROM ". $admin_table_name);
 
 		// Get Admin ID. Varialbe Initialized
 
@@ -542,7 +542,7 @@
 		
 		// Check That There Is Not The Same Existing Email In Database By Retrieving Portal Table From Database
 		
-		$existing_portal_users = $wpdb->get_results($wpdb->prepare("SELECT * FROM ". $portal_table_name));
+		$existing_portal_users = $wpdb->get_results("SELECT * FROM ". $portal_table_name);
 		
 		// Loops Through Table.  If Same Email Already Exists In Database, Error Thrown
 		
@@ -581,7 +581,7 @@
 		
 		// Check That Field Was Actually Inserted Into Database As A New Table Row
 		
-		$updated_portal_users = $wpdb->get_results($wpdb->prepare("SELECT * FROM ". $portal_table_name));
+		$updated_portal_users = $wpdb->get_results("SELECT * FROM ". $portal_table_name);
 		
 		// Loops Through Table.  Checks That Row For Data Was Inserted
 		
@@ -609,7 +609,7 @@
 
 						// Check Database That 'sent_email' Column Was Updated Successfully
 
-						$updated2_portal_users = $wpdb->get_results($wpdb->prepare("SELECT * FROM ". $portal_table_name));
+						$updated2_portal_users = $wpdb->get_results("SELECT * FROM ". $portal_table_name);
 
 						foreach($updated2_portal_users as $usercheck2) { {
 							if ($usercheck->id === $usercheck2->id && strval($usercheck2->sent_email) === '1')
@@ -676,7 +676,7 @@
 		
 		global $wpdb;
 		$portal_table_name = $wpdb->prefix . "portal_users";
-		$portal_users = $wpdb->get_results($wpdb->prepare("SELECT * FROM ". $portal_table_name));
+		$portal_users = $wpdb->get_results("SELECT * FROM ". $portal_table_name);
 		
 		// Check If Portal Table Is Empty
 
@@ -749,7 +749,7 @@
 
 				// Check That Portal User Row Was Updated
 
-				$updated_portal_users = $wpdb->get_results($wpdb->prepare("SELECT * FROM ". $portal_table_name));
+				$updated_portal_users = $wpdb->get_results("SELECT * FROM ". $portal_table_name);
 
 				// Loops Through Table.  Checks That Row For Data Was Inserted
 
@@ -802,7 +802,7 @@
 		
 		global $wpdb;
 		$portal_table_name = $wpdb->prefix . "portal_users";
-		$portal_users = $wpdb->get_results($wpdb->prepare("SELECT * FROM ". $portal_table_name));
+		$portal_users = $wpdb->get_results("SELECT * FROM ". $portal_table_name);
 		
 		// Check If Portal Table Is Empty
 
@@ -829,7 +829,7 @@
 		
 		// Check That Portal User Row Was Deleted
 
-		$updated_portal_users = $wpdb->get_results($wpdb->prepare("SELECT * FROM ". $portal_table_name));
+		$updated_portal_users = $wpdb->get_results("SELECT * FROM ". $portal_table_name);
 
 		// Loops Through Table.  Checks That Row Was Deleted
 
@@ -865,7 +865,7 @@
 		
 		global $wpdb;
 		$portal_table_name = $wpdb->prefix . "portal_users";
-		$portal_users = $wpdb->get_results($wpdb->prepare("SELECT * FROM ". $portal_table_name));
+		$portal_users = $wpdb->get_results("SELECT * FROM ". $portal_table_name);
 
 		// Check If Portal Table Is Empty
 
@@ -960,7 +960,7 @@
 		
 		global $wpdb;
 		$portal_table_name = $wpdb->prefix . "portal_users";
-		$portal_users = $wpdb->get_results($wpdb->prepare("SELECT * FROM ". $portal_table_name));
+		$portal_users = $wpdb->get_results("SELECT * FROM ". $portal_table_name);
 		
 		// Check If Portal Table Is Empty
 
@@ -1007,7 +1007,7 @@
 
 				// Check Database That 'sent_email' Column Was Updated Successful;y
 
-				$updated_portal_users = $wpdb->get_results($wpdb->prepare("SELECT * FROM ". $portal_table_name));
+				$updated_portal_users = $wpdb->get_results("SELECT * FROM ". $portal_table_name);
 
 				foreach($updated_portal_users as $usercheck) { {
 					if ($user->id === $usercheck->id && strval($usercheck->sent_email) === '1')
@@ -1045,7 +1045,7 @@
 		
 		global $wpdb;
 		$portal_table_name = $wpdb->prefix . "portal_users";
-		$portal_users = $wpdb->get_results($wpdb->prepare("SELECT * FROM ". $portal_table_name));
+		$portal_users = $wpdb->get_results("SELECT * FROM ". $portal_table_name);
 		
 		// Check If Portal Table Is Empty
 
@@ -1075,7 +1075,7 @@
 					array('id' => $user_id)
 				);
 
-				$updated_portal_users = $wpdb->get_results($wpdb->prepare("SELECT * FROM ". $portal_table_name));
+				$updated_portal_users = $wpdb->get_results("SELECT * FROM ". $portal_table_name);
 
 				// Loops Through Table.  Checks That Row For Data Was Inserted.  Otherwise Error Thrown After Iterating Through Loop
 
@@ -1099,7 +1099,7 @@
 
 							// Check Database That 'sent_email' Column Was Updated Successfully
 
-							$updated2_portal_users = $wpdb->get_results($wpdb->prepare("SELECT * FROM ". $portal_table_name));
+							$updated2_portal_users = $wpdb->get_results("SELECT * FROM ". $portal_table_name);
 
 							foreach($updated2_portal_users as $usercheck2) { {
 								if ($usercheck->id === $usercheck2->id && strval($usercheck2->sent_email) === '1')
@@ -1142,7 +1142,7 @@
 		
 		global $wpdb;
 		$portal_table_name = $wpdb->prefix . "portal_users";
-		$portal_users = $wpdb->get_results($wpdb->prepare("SELECT * FROM ". $portal_table_name));
+		$portal_users = $wpdb->get_results("SELECT * FROM ". $portal_table_name);
 		
 		// Check If Portal Table Is Empty
 
@@ -1166,7 +1166,7 @@
 
 				// Check Database That 'sent_email' Column Was Updated Successful
 
-				$updated2_portal_users = $wpdb->get_results($wpdb->prepare("SELECT * FROM ". $portal_table_name));
+				$updated2_portal_users = $wpdb->get_results("SELECT * FROM ". $portal_table_name);
 
 				foreach($updated2_portal_users as $usercheck) { {
 					if ($user->id === $usercheck->id && strval($usercheck->sent_email) === '1')
@@ -1268,9 +1268,9 @@
 	// Allows Access To Portal Pages Only If Portal User Or Portal Admin Cookie Present. If Not, Redirected To Portal User Login
 	
 	add_action('template_redirect', function() {
-		if (is_page('portal-page-1') || is_page('portal-page-2')) {
+		if (is_page('vip-portal')) {
 			if (!verify_portal_cookie('admin') && !verify_portal_cookie('user')) {
-				wp_redirect( 'http://localhost/wordpress_test/login-page/' ); 
+				wp_redirect( 'http://box2496.temp.domains/~foundbw0/magellanfinancial.com/#more' ); 
 				exit();
 			}
 		}
