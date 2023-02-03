@@ -8,7 +8,7 @@
 	$portal_table_name = $wpdb->prefix . "portal_users";
 	$charset_collate = $wpdb->get_charset_collate();
 
-	// Checks If Client Portal Users Database ('custom_portal_users') Exists And Creates It If It Does Not Exist
+	// Checks If Client Portal Users Database 'portal_users' Exists And Creates It If It Does Not Exist
 
 	if ($wpdb->get_var("SHOW TABLES LIKE '$portal_table_name'") != $portal_table_name) {
 		$sql = "CREATE TABLE $table_name (
@@ -31,7 +31,9 @@
 
 // COOKIES
 
-	function generate_cookie($id, $is_admin) {
+	// Generate Portal Admin/User Cookie
+
+	function generate_portal_cookie($id, $is_admin) {
 
 		$id_multiplied = strval(intval($id) * 237);
 
@@ -87,7 +89,9 @@
 		}
 	}
 
-	function unscramble_cookie($scrambled_cookie) {
+	// Unscramble Portal Cookie And Returns Admin/User ID
+
+	function unscramble_portal_cookie($scrambled_cookie) {
 
 		// Salt Removal
 
@@ -137,7 +141,9 @@
 		return strval(intval($id_unscrambled) / 237);	
 	}
 
-    function verify_cookie($type) {
+	// Check If Admin/User Portal Cookie Found Corresponds To An Admin/User In Database
+
+    function verify_portal_cookie($type) {
 
 		global $wpdb;
 		
@@ -147,7 +153,7 @@
 			$admin_table_name = $wpdb->prefix . "users";
 			$admins = $wpdb->get_results($wpdb->prepare("SELECT * FROM ". $admin_table_name));
 
-			$admin_cookie_id = unscramble_cookie($_COOKIE["portal_admin"]);
+			$admin_cookie_id = unscramble_portal_cookie($_COOKIE["portal_admin"]);
 		
 			foreach($admins as $admin) {
 				if (strval($admin->ID) === strval($admin_cookie_id)) {
@@ -166,7 +172,7 @@
 			$portal_table_name = $wpdb->prefix . "portal_users";
 			$portal_users = $wpdb->get_results($wpdb->prepare("SELECT * FROM ". $portal_table_name));
 
-			$user_cookie_id = unscramble_cookie($_COOKIE["portal_user"]);
+			$user_cookie_id = unscramble_portal_cookie($_COOKIE["portal_user"]);
 
 			foreach($portal_users as $user) {
 				if (strval($user->id) === strval($user_cookie_id)) {
@@ -184,7 +190,9 @@
 		return false;
 	}
 
-	function destroy_cookie() {
+	// Removes Admin/User Portal Cookies 
+
+	function remove_portal_cookie() {
 		
 		// Remove Cookie Based On If User Has Admin Or Portal User Cookie To Logout
 		
@@ -292,7 +300,7 @@
 
 // AUTHENTICATION
 
-	// Administrator Only 
+	// Verifies If User Is A Verified Portal Admin.  Checks Cookie Or Login Credentials
 
 	function portal_admin($req) {
 		
@@ -310,7 +318,7 @@
 		
 		// Check If Admin Has Valid Cookie.  If So, Return True
 		
-		$valid_admin_cookie = verify_cookie('admin');
+		$valid_admin_cookie = verify_portal_cookie('admin');
 		
 		if ($valid_admin_cookie) {
 			return true;
@@ -352,27 +360,13 @@
 		return new WP_Error('invalid admin email', 'admin email is invalid.', ['status' => 401]);
 	}
 
-	// Administrator Or Portal User
+	// Verifies If User Is A Portal Admin Or User
 
 	function portal_authorized($req) {
 		
-		// Define Wordpress Database Methods And Database Administrator And Portal Users Tables
-		
-		global $wpdb;
-		
-		// Admins
-		
-		$admin_table_name = $wpdb->prefix . "users";
-		$admins = $wpdb->get_results($wpdb->prepare("SELECT * FROM ". $admin_table_name));
-		
-		// Portal Users
-		
-		$portal_table_name = $wpdb->prefix . "portal_users";
-		$portal_users = $wpdb->get_results($wpdb->prepare("SELECT * FROM ". $portal_table_name));
-		
 		// Check If User Is Admin And Has Valid Cookie And The ID That Corresponds To It Is A Valid User Admin ID
 		
-		$cookie_admin_id = verify_cookie('admin');
+		$cookie_admin_id = verify_portal_cookie('admin');
 		
 		if ($cookie_admin_id) {
 			return true;
@@ -380,13 +374,67 @@
 		
 		// Check If User Is Portal User And Has Valid Cookie And The ID That Corresponds To It Is A Valid Portal User ID
 		
-		$cookie_portal_user_id = verify_cookie('user');
+		$cookie_portal_user_id = verify_portal_cookie('user');
 		
 		if ($cookie_portal_user_id) {
 			return true;
 		}
+
+		// If No Portal Admin/User Cookies Found, Check For Credentials In Body
+
+		// Get Body Email
 		
-		// If No Table Row For Admins Or Portal Users Was Found With Corresponding Cookie ID, Deny Access
+		$body = json_decode($req->get_body());
+		$admin_email = $body->admin_email ?? NULL;
+		$admin_password = $body->admin_password ?? NULL;
+		$user_email = $body->email ?? NULL;
+		$user_password = $body->password ?? NULL;
+
+		// Define Wordpress Database Methods And Database Administrator And Portal Users Tables
+		
+		global $wpdb;
+		
+		// Check For Admin Credentials
+		
+		$admin_table_name = $wpdb->prefix . "users";
+		$admins = $wpdb->get_results($wpdb->prepare("SELECT * FROM ". $admin_table_name));
+
+		if ($admin_email && $admin_password) {
+			foreach($admins as $admin) {
+				if (strtolower($admin->user_email) === strtolower($admin_email)) {
+	
+					// Check That Passwords Match
+	
+					$admin_password_valid = wp_check_password($admin_password, $admin->user_pass);
+	
+					if ($admin_password_valid) {
+						return true;
+					} 
+				}
+			}
+		}
+		
+		// If No Admin Credentials Found, Check User Credentials
+		
+		$portal_table_name = $wpdb->prefix . "portal_users";
+		$portal_users = $wpdb->get_results($wpdb->prepare("SELECT * FROM ". $portal_table_name));
+
+		if ($user_email && $user_password) {
+			foreach($portal_users as $user) {
+				if (strtolower($user->email) === strtolower($user_email)) {
+	
+					// Check That Passwords Match
+	
+					$user_password_valid = wp_check_password($user_password, $user->password);
+	
+					if ($user_password_valid) {
+						return true;
+					} 
+				}
+			}
+		}
+		
+		// If No Table Row For Admins Or Portal Users Was Found With Corresponding Cookie ID Or With Login Credentials, Deny Access
 		
 		return false;
 	}
@@ -421,8 +469,8 @@
 
 		// Check For Cookie.  Otherwise Check For Email And Password In Body Parameters
 
-		if (verify_cookie('admin')) {
-			$admin_id = strval(unscramble_cookie($_COOKIE["portal_admin"]));
+		if (verify_portal_cookie('admin')) {
+			$admin_id = strval(unscramble_portal_cookie($_COOKIE["portal_admin"]));
 		} else {
 			foreach($admins as $admin) {
 				if (strtolower($admin->user_email) === strtolower($admin_email)) {
@@ -438,7 +486,7 @@
 
 						// Generate Cookie For Portal Admin
 
-						generate_cookie($admin_id, true);
+						generate_portal_cookie($admin_id, true);
 
 					}
 				}
@@ -610,10 +658,10 @@
 
 		// Makes Sure If User Is Portal User And Not Administrator That Their Cookie Id Corresponds With Parameter User ID So They Cannot Modify Another Users Data
 
-		$is_admin = verify_cookie('admin');
-		$is_user = verify_cookie('user');
+		$is_admin = verify_portal_cookie('admin');
+		$is_user = verify_portal_cookie('user');
 
-		if (!$is_admin && $is_user && strval(unscramble_cookie($_COOKIE["portal_user"])) !== strval($user_id)) {
+		if (!$is_admin && $is_user && strval(unscramble_portal_cookie($_COOKIE["portal_user"])) !== strval($user_id)) {
 			return new WP_Error('error updating user', 'portal user can only modify data corresponding to their account.', ['status' => 401]);
 		}
 		
@@ -751,10 +799,10 @@
 
 		// Makes Sure If User Is Portal User And Not Administrator That Their Cookie Id Corresponds With Parameter User ID So They Cannot Modify Another Users Data
 
-		$is_admin = verify_cookie('admin');
-		$is_user = verify_cookie('user');
+		$is_admin = verify_portal_cookie('admin');
+		$is_user = verify_portal_cookie('user');
 
-		if (!$is_admin && $is_user && strval(unscramble_cookie($_COOKIE["portal_user"])) !== strval($user_id)) {
+		if (!$is_admin && $is_user && strval(unscramble_portal_cookie($_COOKIE["portal_user"])) !== strval($user_id)) {
 			return new WP_Error('error updating user', 'portal user can only modify data corresponding to their account.', ['status' => 401]);
 		}
 		
@@ -839,8 +887,8 @@
 
 		// Check For Cookie.  Otherwise Check For Email And Password In Body Parameters
 
-		if (verify_cookie('user')) {
-			$user_id = strval(unscramble_cookie($_COOKIE["portal_user"]));
+		if (verify_portal_cookie('user')) {
+			$user_id = strval(unscramble_portal_cookie($_COOKIE["portal_user"]));
 		} else {
 			foreach($portal_users as $usercheck) {
 				if (strtolower($usercheck->email) === strtolower($email)) {
@@ -856,7 +904,7 @@
 
 						// Generate Cookie For Portal User
 
-						generate_cookie($user_id, false);
+						generate_portal_cookie($user_id, false);
 					}
 				}
 			}
@@ -1218,7 +1266,7 @@
 		
 		register_rest_route( 'portal', '/logout', [
 			'methods' => 'POST',
-			'callback' => 'destroy_cookie'
+			'callback' => 'remove_portal_cookie'
 		]);
 		
 	});
@@ -1229,7 +1277,7 @@
 	
 	add_action('template_redirect', function() {
 		if (is_page('portal-page-1') || is_page('portal-page-2')) {
-			if (!verify_cookie('admin') && !verify_cookie('user')) {
+			if (!verify_portal_cookie('admin') && !verify_portal_cookie('user')) {
 				wp_redirect( 'http://localhost/wordpress_test/login-page/' ); 
 				exit();
 			}
