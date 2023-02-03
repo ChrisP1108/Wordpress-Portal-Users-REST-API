@@ -219,6 +219,8 @@
 
 // SEND EMAIL
 
+    // Sends Email. Message Generated Based On Type
+
 	function send_portal_user_email($type, $email, $password) {
 
 		// Generate Message Based On Type (Create User, Forgotten Password, Admin Regenerate New User Password)
@@ -251,7 +253,7 @@
 			<table width="600" border="0" cellspacing="0" cellpadding="0"> 
 				<tbody>
 					<tr>
-						<td colspan="3" style="background: #ffffff; Padding: 30px; " align="center"><img src=https://www.partnerwithmagellan.com/wp-content/uploads/2022/08/MAG-LOGO-HORZ-HEX-RevColor.svg width="320"  alt=""/></td>
+						<td colspan="3" style="background: #ffffff; Padding: 30px; " align="center"><img src=http://box2496.temp.domains/~foundbw0/magellanfinancial.com/wp-content/uploads/2022/08/email_logo.png width="200"  alt=""/></td>
 					</tr>
 					<tr>
 						<td height="43" colspan="3" style="padding-top:20px;">
@@ -286,8 +288,11 @@
 
 		// Email Headers
 
-		$headers = 'From: portaladmin@partnerwithmagellan.com';
-		$headers = $headers . 'Content-Type: text/html; charset=iso-8859-1\n';
+		$headers = [
+            "From: noreply@partnerwithmagellan.com",
+            "MIME-Version: 1.0",
+            "Content-type: text/html; charset=UTF-8"
+        ];
 
 		// Send Email
 
@@ -1268,7 +1273,7 @@
 	// Allows Access To Portal Pages Only If Portal User Or Portal Admin Cookie Present. If Not, Redirected To Portal User Login
 	
 	add_action('template_redirect', function() {
-		if (is_page('vip-portal')) {
+		if (is_page('some-page')) {
 			if (!verify_portal_cookie('admin') && !verify_portal_cookie('user')) {
 				wp_redirect( 'http://box2496.temp.domains/~foundbw0/magellanfinancial.com/#more' ); 
 				exit();
