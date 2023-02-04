@@ -29,6 +29,16 @@
 		dbDelta( $sql );
 	} 
 
+// XSS MALICIOUS JAVASCRIPT CODE INJECTION ATTACK PREVENTION
+
+	// Checks If Script Tag Is Present. If Found, Error Thrown
+
+	function var_secure($var) {
+		if (str_contains($var, '<script>')) {
+			return false;
+		} else return true;
+	}
+
 // COOKIES
 
 	// Generate Portal Admin/User Cookie
@@ -332,6 +342,12 @@
             "Content-type: text/html; charset=UTF-8"
         ];
 
+		// Checks That Fields Are Secure
+
+		if (!var_secure($email) || !var_secure($password)) {
+			return false;
+		}
+
 		// Send Email
 
 		$send_email = wp_mail($email, $subject_message, $email_output, $headers);
@@ -576,14 +592,33 @@
 		// Check If Portal Table Is Empty
 
 		if ($portal_users === null || count($portal_users) === 0) {
-			
 			return rest_ensure_response(['message' => 'portal admin logged in successfully. portal users table is currently empty.', 'data' => []]);
 		
 		} else {
+
+		// Sanitize Data To Avoid Execution Of Malicious Injected Code
+		
+		$sanitized_data = [];
+
+		foreach($portal_users as $user) {
+			$sanitized_row = [
+				'id' => htmlspecialchars($user->id),
+				'first_name' => htmlspecialchars($user->first_name),
+				'last_name' => htmlspecialchars($user->last_name),
+				'company' => htmlspecialchars($user->company),
+				'email' => htmlspecialchars($user->email),
+				'updated_password' => htmlspecialchars($user->updated_password),
+				'sent_email' => htmlspecialchars($user->sent_email),
+				'created' => htmlspecialchars($user->created),
+				'updated' => htmlspecialchars($user->updated)
+			];
+			
+			array_push($sanitized_data, $sanitized_row);
+		}
 			
 		// Return Portal Users If Found In Table
 
-			return rest_ensure_response(['message' => 'portal admin logged in successfully. portal users data retrieved successfully.', 'data' => $portal_users]);
+			return rest_ensure_response(['message' => 'portal admin logged in successfully. portal users data retrieved successfully.', 'data' => $sanitized_data]);
 		
 		}
 	}
@@ -608,6 +643,12 @@
 		
 		if (!$first_name || !$last_name || !$company || !$email) {
 			return new WP_Error('incomplete fields', 'please fill out the `first_name`, `last_name`, `company`, and `email` fields to register portal user.', ['status' => 400]);
+		}
+
+		// Checks That There Are No Script Tags To Avoid Malicious Code Injection
+
+		if (!var_secure($first_name) || !var_secure($last_name) || !var_secure($company) || !var_secure($email)) {
+			return new WP_Error('script tag detected', 'request will not be executed due to presence of a `<script>` tag.', ['status' => 403]);
 		}
 		
 		// Capitalize First Character, LowerCase Remaining Characters For Appropriate Database Formatting.  Password Capitalization Doesn't Get Modified.
@@ -752,6 +793,12 @@
 		
 		if (!$first_name && !$last_name && !$company && !$email && !$password) {
 			return new WP_Error('error updating user', 'no fields have been passed in to update.  portal user data will remain the same.', ['status' => 400]);
+		}
+
+		// Checks That There Are No Script Tags To Avoid Malicious Code Injection
+
+		if (!var_secure($first_name) || !var_secure($last_name) || !var_secure($company) || !var_secure($email) || !var_secure($password)) {
+			return new WP_Error('script tag detected', 'request will not be executed due to presence of a `<script>` tag.', ['status' => 403]);
 		}
 		
 		// Define Wordpress Database Methods And Database Table
@@ -1015,13 +1062,13 @@
 				// Return API Response
 
 				return rest_ensure_response(['message' => 'portal user logged in successfully.', 'data' => [
-					'id' => $user->id, 
-					'first_name' => $user->first_name,
-					'last_name' => $user->last_name,
-					'company' => $user->company,
-					'email' => $user->email,
-					'updated_password' => $user->updated_password,
-					'sent_email' => $user->sent_email
+					'id' => htmlspecialchars($user->id), 
+					'first_name' => htmlspecialchars($user->first_name),
+					'last_name' => htmlspecialchars($user->last_name),
+					'company' => htmlspecialchars($user->company),
+					'email' => htmlspecialchars($user->email),
+					'updated_password' => htmlspecialchars($user->updated_password),
+					'sent_email' => htmlspecialchars($user->sent_email)
 				]]);
 			}
 		}
