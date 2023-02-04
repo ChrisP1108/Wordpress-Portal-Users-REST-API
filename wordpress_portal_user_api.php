@@ -1375,6 +1375,7 @@
 
 		register_rest_route( 'portal', '/user/login', [
 			'methods' => 'POST',
+			'permission_callback' => '__return_true',
 			'callback' => 'login_portal_user'
 		]);
 		
@@ -1382,6 +1383,7 @@
 		
 		register_rest_route( 'portal', '/user/forgot', [
 			'methods' => 'POST',
+			'permission_callback' => '__return_true',
 			'callback' => 'forgot_password_portal_user'
 		]);
 		
@@ -1405,6 +1407,7 @@
 		
 		register_rest_route( 'portal', '/logout', [
 			'methods' => 'POST',
+			'permission_callback' => '__return_true',
 			'callback' => 'remove_portal_cookie'
 		]);
 		
