@@ -210,6 +210,10 @@
 	// Removes Admin/User Portal Cookies 
 
 	function remove_portal_cookie() {
+
+		// Clear Browser Cache
+
+		header('Clear-Site-Data: "cache"');
 		
 		// Remove Cookie Based On If User Has Admin Or Portal User Cookie To Logout
 		
@@ -308,7 +312,7 @@
 					<tr>
 						<td width="300" height="27" align="right"><p><strong>Login Page Url:</strong></p></td>
 						<td width="6"> </td>
-						<td width="405"><a href="http://www.google.com" target="_blank" rel="noopener">http://www.google.com</a></td>
+						<td width="405"><a href="http://box2496.temp.domains/~foundbw0/magellanfinancial.com/test-portal-user-login/" target="_blank" rel="noopener">Click here to login</a></td>
 				  	</tr>
 				</tbody>          
 			</table>
@@ -532,6 +536,10 @@
 	// Accessible By: Admin Only
     
 	function get_portal_users($req) {
+
+		// Clear Browser Cache
+
+		header('Clear-Site-Data: "cache"');
 
 		// Get Body Data
 
@@ -1002,6 +1010,10 @@
 
 	function login_portal_user($req) {
 
+		// Clear Browser Cache
+
+		header('Clear-Site-Data: "cache"');
+
 		// Get Body Email
 		
 		$body = json_decode($req->get_body());
@@ -1418,9 +1430,21 @@
 	// Allows Access To Portal Pages Only If Portal User Or Portal Admin Cookie Present. If Not, Redirected To Portal User Login
 	
 	add_action('template_redirect', function() {
-		if (is_page('some-page')) {
-			if (!verify_portal_cookie('admin') && !verify_portal_cookie('user')) {
-				wp_redirect( 'http://box2496.temp.domains/~foundbw0/magellanfinancial.com/#more' ); 
+		
+		// Restrict Access To Portal Pages And Password Update Pages
+		
+		if (is_page('test-portal-page') || is_page('test-portal-user-update-information')) {
+			if (!verify_portal_cookie('admin') && !verify_portal_cookie('user') && !is_user_logged_in()) {
+				wp_redirect( 'http://box2496.temp.domains/~foundbw0/magellanfinancial.com/test-portal-user-login/' ); 
+				exit();
+			}
+		}
+		
+		// Redirect From Login To Portal Home Page If Portal User Or Admin Cookie Found
+		
+		if (is_page('test-portal-user-login')) {
+			if (verify_portal_cookie('admin') || verify_portal_cookie('user')) {
+				wp_redirect( 'http://box2496.temp.domains/~foundbw0/magellanfinancial.com/test-portal-page/' ); 
 				exit();
 			}
 		}
