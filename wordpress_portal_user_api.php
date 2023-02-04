@@ -93,7 +93,8 @@
 		// Sets Cookie Based On If User Is Admin Or Portal User
 
 		if ($is_admin) {
-			setcookie('portal_admin', $id_scrambled, time() + ( 7 * DAY_IN_SECONDS ), '/', '', 0, true);
+			$added_admin_salt = '^' . $id_scrambled . '{';
+			setcookie('portal_admin', $added_admin_salt, time() + ( 7 * DAY_IN_SECONDS ), '/', '', 0, true);
 		} else {
 			setcookie('portal_user', $id_scrambled, time() + ( 7 * DAY_IN_SECONDS ), '/', '', 0, true);
 		}
@@ -102,6 +103,12 @@
 	// Unscramble Portal Cookie And Returns Admin/User ID
 
 	function unscramble_portal_cookie($scrambled_cookie) {
+
+		// Remove Portal Admin Additional Character Concatenation If Cookie Is Admin
+
+		if (str_contains($scrambled_cookie, '^') && str_contains($scrambled_cookie, '{')) {
+			$scrambled_cookie = substr($scrambled_cookie, 1, -1);
+		}
 
 		// Salt Removal
 
@@ -394,7 +401,7 @@
 		// Check That Admin email/username And Password Is In Body.  If Not, Throw Error
 		
 		if (!$admin_username || !$admin_password) {
-			return new WP_Error('no portal admin cookie. `admin_username` and `admin_password` fields required', 'admin email/username and password must be provided to execute this action since no portal admin cookie was found.', ['status' => 401]);
+			return new WP_Error('invalid portal admin cookie. `admin_username` and `admin_password` fields required', 'admin email/username and password must be provided to execute this action since no portal admin or invalid cookie was found.', ['status' => 401]);
 		}
 		
 		// Loop Through Admins In Table And Find Admin Corresponding To Email
