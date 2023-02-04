@@ -241,13 +241,24 @@
 				$subject_message = 'Magellan Portal User Password Reset By Admin';
 				$type_message = 'The Magellan Portal Administrator has reset your password';
 				break;
+			case 'deleted':
+				$subject_message = 'Magellan Portal User Deleted';
+				break;
 		}
 
 		// Check Arguments.  If Not All Required Arguments Present, Return False
 
-		if (!$type || !$email || !$password || !$subject_message || !$type_message) {
+		if (!$type || !$email) {
 			return false;
 		}
+
+		if ($type !== 'deleted') {
+			if (!$password || !$subject_message || !$type_message) {
+				return false;
+			}
+		}
+
+		// Email Template For Portal User Created, Password Reset
 
 		$html_email_template = '
 			<table width="600" border="0" cellspacing="0" cellpadding="0"> 
@@ -286,6 +297,33 @@
 			</table>
 		';
 
+		// Email Template For User Deleted
+
+		$deleted_user_html_template = '
+			<table width="600" border="0" cellspacing="0" cellpadding="0"> 
+				<tbody>
+					<tr>
+						<td colspan="3" style="background: #ffffff; Padding: 30px; " align="center"><img src=http://box2496.temp.domains/~foundbw0/magellanfinancial.com/wp-content/uploads/2022/08/email_logo.png width="200"  alt=""/></td>
+					</tr>
+					<tr>
+						<td height="43" colspan="3" style="padding-top:20px;">
+							<blockquote>
+								<p style="text-align: center;"><strong>Hello. Your registration with the Magellan Portal Has Been Terminated.  If you feel this is an error, contact Magellan.</strong></p>
+							</blockquote>
+						</td>
+					</tr>
+				</tbody>          
+			</table>
+		';
+
+		// Determine What Email Template To Use Based On $type Variable Value
+
+		$email_output = null;
+
+		if ($type === 'deleted') {
+			$email_output = $deleted_user_html_template;
+		} else $email_output = $html_email_template;
+		
 		// Email Headers
 
 		$headers = [
@@ -296,7 +334,7 @@
 
 		// Send Email
 
-		$send_email = wp_mail($email, $subject_message, $html_email_template, $headers);
+		$send_email = wp_mail($email, $subject_message, $email_output, $headers);
 
 		// Check That Email Got Sent.  If So, True Is Returned.  Else False Is Returned
 
@@ -318,7 +356,7 @@
 		// Check If Admin Table Is Empty.  Deny Access If Empty
 
 		if ($admins === null || count($admins) === 0) {
-			return new WP_Error('admin username and password not found', 'admin username and password not found as admin users table is currently empty', ['status' => 400]);
+			return new WP_Error('admin email/username and password not found', 'admin email/username and password not found as admin users table is currently empty', ['status' => 400]);
 		}
 		
 		// Check If Admin Has Valid Cookie.  If So, Return True
@@ -330,19 +368,32 @@
 		// If No Cookie ID Was Found, Check For Admin Login Credentials In Body
 		
 		$body = json_decode($req->get_body());
-		$admin_email = $body->admin_email ?? NULL;
+		$admin_username = $body->admin_username ?? NULL;
 		$admin_password = $body->admin_password ?? NULL;
+
+		// Check If Username Includes "@" Email To See If email/username Only Was Provided
+
+		$username_has_email = str_contains($admin_username, '@');
 		
-		// Check That Admin Username And Password Is In Body.  If Not, Throw Error
+		// Check That Admin email/username And Password Is In Body.  If Not, Throw Error
 		
-		if (!$admin_email || !$admin_password) {
-			return new WP_Error('no portal admin cookie. `admin_username` and `admin_password` fields required', 'admin username and password must be provided to execute this action since no portal admin cookie was found.', ['status' => 401]);
+		if (!$admin_username || !$admin_password) {
+			return new WP_Error('no portal admin cookie. `admin_username` and `admin_password` fields required', 'admin email/username and password must be provided to execute this action since no portal admin cookie was found.', ['status' => 401]);
 		}
 		
 		// Loop Through Admins In Table And Find Admin Corresponding To Email
 		
 		foreach($admins as $admin) {
-			if (strtolower($admin->user_email) === strtolower($admin_email)) {
+
+			// Checks If Username Provided email/username Only And Adjust Accordingly
+
+			$admin_db_username = null;
+
+			if (!$username_has_email) {
+				$admin_db_username = substr($admin->user_email, 0, strpos($admin->user_email, '@'));
+			} else $admin_db_username = $admin->user_email;
+
+			if (strtolower($admin_db_username) === strtolower($admin_username)) {
 
 				// Check That Passwords Match
 
@@ -356,9 +407,9 @@
 			}
 		}
 		
-		// If No Table Row Was Found With Corresponding Admin Email, Deny Access
+		// If No Table Row Was Found With Corresponding Admin email/username, Deny Access
 		
-		return new WP_Error('invalid admin email', 'admin email is invalid.', ['status' => 401]);
+		return new WP_Error('invalid admin email/username', 'admin email/username is invalid.', ['status' => 401]);
 	}
 
 	// Verifies If User Is A Portal Admin Or User
@@ -379,13 +430,17 @@
 
 		// If No Portal Admin/User Cookies Found, Check For Credentials In Body
 
-		// Get Body Email
+		// Get Body Parameters
 		
 		$body = json_decode($req->get_body());
-		$admin_email = $body->admin_email ?? NULL;
+		$admin_username = $body->admin_username ?? NULL;
 		$admin_password = $body->admin_password ?? NULL;
 		$user_email = $body->email ?? NULL;
 		$user_password = $body->password ?? NULL;
+
+		// Check If Username Includes "@" Email To See If email/username Only Was Provided
+
+		$username_has_email = str_contains($admin_username, '@');
 
 		// Define Wordpress Database Methods And Database Administrator And Portal Users Tables
 		
@@ -396,9 +451,18 @@
 		$admin_table_name = $wpdb->prefix . "users";
 		$admins = $wpdb->get_results("SELECT * FROM ". $admin_table_name);
 
-		if ($admin_email && $admin_password) {
+		if ($admin_username && $admin_password) {
 			foreach($admins as $admin) {
-				if (strtolower($admin->user_email) === strtolower($admin_email)) {
+
+				// Checks If Username Provided email/username Only And Adjust Accordingly
+
+				$admin_db_username = null;
+
+				if (!$username_has_email) {
+					$admin_db_username = substr($admin->user_email, 0, strpos($admin->user_email, '@'));
+				} else $admin_db_username = $admin->user_email;
+
+				if (strtolower($admin_db_username) === strtolower($admin_username)) {
 	
 					// Check That Passwords Match
 	
@@ -449,8 +513,12 @@
 		// Get Body Data
 
 		$body = json_decode($req->get_body());
-		$admin_email = $body->admin_email ?? NULL;
+		$admin_username = $body->admin_username ?? NULL;
 		$admin_password = $body->admin_password ?? NULL;
+
+		// Check If Username Includes "@" Email To See If email/username Only Was Provided
+
+		$username_has_email = str_contains($admin_username, '@');
 		
 		// Define Wordpress Database Methods And Database Table
 		
@@ -470,7 +538,16 @@
 			$admin_id = strval(unscramble_portal_cookie($_COOKIE["portal_admin"]));
 		} else {
 			foreach($admins as $admin) {
-				if (strtolower($admin->user_email) === strtolower($admin_email)) {
+
+				// Checks If Username Provided email/username Only And Adjust Accordingly
+
+				$admin_db_username = null;
+
+				if (!$username_has_email) {
+					$admin_db_username = substr($admin->user_email, 0, strpos($admin->user_email, '@'));
+				} else $admin_db_username = $admin->user_email;
+
+				if (strtolower($admin_db_username) === strtolower($admin_username)) {
 
 					// Check That Passwords Match
 
@@ -492,7 +569,7 @@
 
 				// If No Admin ID Found, Throw Error
 
-				return new WP_Error('unauthorized', 'please provide correct admin email and password credentials', ['status' => 401]);
+				return new WP_Error('unauthorized', 'please provide correct admin email/username and password credentials', ['status' => 401]);
 			}
 		}
 
@@ -621,7 +698,7 @@
 								
 								// API Response Upon Success
 
-								return rest_ensure_response(['message' => 'portal user created successfully', 'data' => ['id' => $usercheck->id, 'password' => $random_password], 'sent_email' => $usercheck2->sent_email]);
+								return rest_ensure_response(['message' => 'portal user created successfully', 'data' => ['id' => $usercheck->id, 'password' => $random_password, 'sent_email' => $usercheck2->sent_email]]);
 							}
 						}
 
@@ -814,6 +891,10 @@
 		if ($portal_users === null || count($portal_users) === 0) {
 			return new WP_Error('error deleting user', 'portal user does not exist as portal users table is currently empty', ['status' => 400]);
 		} 
+
+		// Gets User Email To Send Email Notifying Them Of Their Account Being Deleted
+
+		$user_deleted_email = null;
 		
 		// Loops Through Table.  Checks That User ID Exists And Then Deletes
 		
@@ -823,6 +904,7 @@
 			if (strval($user->id) === strval($user_id)) {
 				$wpdb->delete($portal_table_name, array('id' => $user_id));
 				$user_deleted = true;
+				$user_deleted_email = $user->email;
 			}
 		}
 		
@@ -845,10 +927,16 @@
 				}
 			}
 		}
+
+		// Send Email To Portal User Notifying Of Their Account Being Deleted.  If Email Fails, Throw Error
+
+		if (!send_portal_user_email('deleted', $user_deleted_email, null)) {
+			return new WP_Error('error sending email', 'user deleted, but email did not send to notify user.  send an email to the user informing them of this.', ['status' => 500, 'id' => $user_id]);
+		}
 		
 		// If User Delete Was Successful, Return Success Message
 		
-		return rest_ensure_response(['message' => 'portal user deleted successfully.', 'data' => ['id' => $user_id]]);
+		return rest_ensure_response(['message' => 'portal user deleted successfully and email sent notifying them of this.', 'data' => ['id' => $user_id]]);
 	};
 
 
