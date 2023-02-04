@@ -692,10 +692,10 @@
 		// Insert Fields Into Database Table
 
 		$wpdb->insert($portal_table_name, array(
-			'first_name' => $first_name, 
-			'last_name' => $last_name, 
-			'company' => $company, 
-			'email' => $email, 
+			'first_name' => htmlspecialchars($first_name), 
+			'last_name' => htmlspecialchars($last_name), 
+			'company' => htmlspecialchars($company), 
+			'email' => htmlspecialchars($email), 
 			'password' => $hashed_password,
 			'updated_password' => 0,
 			'sent_email' => 0,
@@ -865,10 +865,10 @@
 				$email = strtolower($email);
 
 				$wpdb->update($portal_table_name, array(
-					'first_name' => $first_name, 
-					'last_name' => $last_name, 
-					'company' => $company, 
-					'email' => $email,
+					'first_name' => htmlspecialchars($first_name), 
+					'last_name' => htmlspecialchars($last_name), 
+					'company' => htmlspecialchars($company), 
+					'email' => htmlspecialchars($email),
 					'password' => $hashed_password,
 					'updated' => $updated_at,
 					'updated_password' => 1
