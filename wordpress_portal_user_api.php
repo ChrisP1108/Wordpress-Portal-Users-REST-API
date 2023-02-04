@@ -214,6 +214,10 @@
 		// Clear Browser Cache
 
 		header('Clear-Site-Data: "cache"');
+
+		// Clear Cache Wordpress
+
+		wp_cache_flush();
 		
 		// Remove Cookie Based On If User Has Admin Or Portal User Cookie To Logout
 		
@@ -540,6 +544,10 @@
 		// Clear Browser Cache
 
 		header('Clear-Site-Data: "cache"');
+
+		// Clear Cache Wordpress
+
+		wp_cache_flush();
 
 		// Get Body Data
 
@@ -1013,6 +1021,10 @@
 		// Clear Browser Cache
 
 		header('Clear-Site-Data: "cache"');
+
+		// Clear Cache Wordpress
+
+		wp_cache_flush();
 
 		// Get Body Email
 		
