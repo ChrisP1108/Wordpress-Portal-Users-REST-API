@@ -1446,6 +1446,7 @@
 		// Restrict Access To Portal Pages And Password Update Pages
 		
 		if (is_page('test-portal-page') || is_page('test-portal-user-update-information')) {
+			wp_cache_flush();
 			if (!verify_portal_cookie('admin') && !verify_portal_cookie('user') && !is_user_logged_in()) {
 				wp_redirect( 'http://box2496.temp.domains/~foundbw0/magellanfinancial.com/test-portal-user-login/' ); 
 				exit();
@@ -1455,6 +1456,7 @@
 		// Redirect From Login To Portal Home Page If Portal User Or Admin Cookie Found
 		
 		if (is_page('test-portal-user-login')) {
+			wp_cache_flush();
 			if (verify_portal_cookie('admin') || verify_portal_cookie('user')) {
 				wp_redirect( 'http://box2496.temp.domains/~foundbw0/magellanfinancial.com/test-portal-page/' ); 
 				exit();
