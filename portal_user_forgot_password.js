@@ -1,19 +1,14 @@
-// Check If User Is Already Logged In To Fix Login Loop Issues With Browser Cache To Force Another Reload
-    
-if (document.cookie.includes('portal_logged_in')) {
-    window.location.reload();
-}
-
 // Select Submit Button
-
+    
 const submitBtn = document.querySelector('#submit');
-
+    
 // Select Error Message Field
 
-const errMsg = document.querySelector('#formErrMsg');
+const msgText = document.querySelector('#formErrMsg');
+console.log(msgText)
 
-function setErrMsg(msg) {
-    errMsg.innerHTML = msg;
+function setMsg(msg) {
+    msgText.innerHTML = msg;
 }
 
 // Button HTML Selector
@@ -34,39 +29,28 @@ function setBtnHTML(html) {
 
 // Monitor For Inputs Typed To Clear Error Message If Present And Monitor For Enter Key
 
-const inputs = document.querySelectorAll('#portalLoginForm input');
+const input = document.querySelector('#portalLoginForm input');
     
-inputs.forEach(input => {
-   input.addEventListener('input', () => setErrMsg('')); 
-   input.addEventListener('keyup', (e) => {
-       if (e.key === 'Enter') {
-           submitForm();
-       }
-   })
+input.addEventListener('input', () => setMsg('')); 
+input.addEventListener('keyup', (e) => {
+   if (e.key === 'Enter') {
+       submitForm();
+   }
 });
 
 // Makes HTTP Request On Form Submit
 
 function submitForm() {
-    const email = document.querySelector('#loginEmail').value;
-    const password = document.querySelector('#loginPassword').value;
+    const email = document.querySelector('#emailRecover').value;
     
-    // Check For Missing Fields
+    // Check If Email Field Is Missing
     
-    if (!email && !password) {
-        setErrMsg('Please provide your email and password');
-        return;
-    }
     if (!email) {
-        setErrMsg('Please provide your email');
+        setMsg('Please provide your email');
         return;
     }
     if (!email.includes('@')) {
-        setErrMsg('Please provide a valid email');
-        return;
-    }
-    if (!password) {
-        setErrMsg('Please provide your password');
+        setMsg('Please provide a valid email');
         return;
     }
     
@@ -78,38 +62,43 @@ function submitForm() {
     
     setBtnHTML(spinnerHTML);
     
-    async function loginHTTPReq() {
+    async function submitEmailHTTP() {
         try {
-            const res = await fetch(domainURL + '/wp-json/portal/user/login', {
+            const res = await fetch(domainURL + '/wp-json/portal/user/forgot', {
                method: 'POST',
                headers: {
                    'content-type': 'application/json'
                },
-               body: JSON.stringify({ email, password})
+               body: JSON.stringify({ email })
             });
             
+            setBtnHTML(btnStaticHTML);
+            
             if (res.ok) {
-                
-                const data = await res.json();
-                
+                submitBtn.remove();
+                document.querySelector('#emailHeading').remove();
+                document.querySelector('#portalLoginForm').remove();
+                setMsg('Thank you.  You will receive an email shortly with a new temporary password to log back in.');
                 setTimeout(() => {
-                    if (data.data.updated_password === "0") {
-                        window.location.replace("http://box2496.temp.domains/~foundbw0/magellanfinancial.com/test-portal-user-update-information/");
-                    } else window.location.replace("http://box2496.temp.domains/~foundbw0/magellanfinancial.com/test-portal-page/");
-                }, 1000);
+                   window.location.replace("http://box2496.temp.domains/~foundbw0/magellanfinancial.com/test-portal-user-login/"); 
+                }, 10000);
             } else {
-                setBtnHTML(btnStaticHTML);
-                setErrMsg('Login failed. Please check your credentials and try again.  If you have forgotten your password, click the "Forgot Password?" button below.')
+                if (res.status === 400) {
+                    setMsg('You provided an invalid email.  Please try again or contact Magellan for support.');
+                }
+                if (res.status >= 500) {
+                    setMsg('An error occured in submitting your email.  Please try again or contact Magellan for support.');
+                }
                 return;
             }
         } catch (err) {
             setBtnHTML(btnStaticHTML);
-            setErrMsg('Connection error. Please check your internet connection and try again.');
+            setMsg('Connection error. Please check your internet connection and try again.');
             console.error(err);
         }
     }
     
-    loginHTTPReq();
+    submitEmailHTTP();
 };
 
 // Monitor For Button Click And Execute Login Attempt
