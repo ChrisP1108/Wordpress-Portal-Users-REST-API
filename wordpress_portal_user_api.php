@@ -210,14 +210,6 @@
 	// Removes Admin/User Portal Cookies 
 
 	function remove_portal_cookie() {
-
-		// Clear Browser Cache
-
-		header('Clear-Site-Data: "cache"');
-
-		// Clear Cache Wordpress
-
-		wp_cache_flush();
 		
 		// Remove Cookie Based On If User Has Admin Or Portal User Cookie To Logout
 		
@@ -236,6 +228,14 @@
 			setcookie('portal_user', 'logged_out', time() - 3600, '/', '', 0);
 			return rest_ensure_response(['message' => 'portal user logged out successfully.']);
 		}
+
+		// Clear Browser Cache
+
+		header('Clear-Site-Data: "*"');
+
+		// Clear Cache Wordpress
+
+		wp_cache_flush();
 		
 		// If No Admin Or Portal User Cookies Found, Throw Error
 		
@@ -541,14 +541,6 @@
     
 	function get_portal_users($req) {
 
-		// Clear Browser Cache
-
-		header('Clear-Site-Data: "cache"');
-
-		// Clear Cache Wordpress
-
-		wp_cache_flush();
-
 		// Get Body Data
 
 		$body = json_decode($req->get_body());
@@ -619,27 +611,31 @@
 		
 		} else {
 
-		// Sanitize Data To Avoid Execution Of Malicious Injected Code
-		
-		$sanitized_data = [];
+			// Sanitize Data To Avoid Execution Of Malicious Injected Code
+			
+			$sanitized_data = [];
 
-		foreach($portal_users as $user) {
-			$sanitized_row = [
-				'id' => htmlspecialchars($user->id),
-				'first_name' => htmlspecialchars($user->first_name),
-				'last_name' => htmlspecialchars($user->last_name),
-				'company' => htmlspecialchars($user->company),
-				'email' => htmlspecialchars($user->email),
-				'updated_password' => htmlspecialchars($user->updated_password),
-				'sent_email' => htmlspecialchars($user->sent_email),
-				'created' => htmlspecialchars($user->created),
-				'updated' => htmlspecialchars($user->updated)
-			];
+			foreach($portal_users as $user) {
+				$sanitized_row = [
+					'id' => htmlspecialchars($user->id),
+					'first_name' => htmlspecialchars($user->first_name),
+					'last_name' => htmlspecialchars($user->last_name),
+					'company' => htmlspecialchars($user->company),
+					'email' => htmlspecialchars($user->email),
+					'updated_password' => htmlspecialchars($user->updated_password),
+					'sent_email' => htmlspecialchars($user->sent_email),
+					'created' => htmlspecialchars($user->created),
+					'updated' => htmlspecialchars($user->updated)
+				];
+				
+				array_push($sanitized_data, $sanitized_row);
+			}
+
+			// Clear Browser Cache
+
+			header('Clear-Site-Data: "*"');
 			
-			array_push($sanitized_data, $sanitized_row);
-		}
-			
-		// Return Portal Users If Found In Table
+			// Return Portal Users If Found In Table
 
 			return rest_ensure_response(['message' => 'portal admin logged in successfully. portal users data retrieved successfully.', 'data' => $sanitized_data]);
 		
@@ -1018,14 +1014,6 @@
 
 	function login_portal_user($req) {
 
-		// Clear Browser Cache
-
-		header('Clear-Site-Data: "cache"');
-
-		// Clear Cache Wordpress
-
-		wp_cache_flush();
-
 		// Get Body Email
 		
 		$body = json_decode($req->get_body());
@@ -1089,6 +1077,10 @@
 		
 		foreach($portal_users as $user) {
 			if (strval($user->id) === strval($user_id)) {
+
+				// Clear Browser Cache
+
+				header('Clear-Site-Data: "*"');
 
 				// Return API Response
 
@@ -1180,14 +1172,22 @@
 
 				$updated_portal_users = $wpdb->get_results("SELECT * FROM ". $portal_table_name);
 
-				foreach($updated_portal_users as $usercheck) { {
-					if ($user->id === $usercheck->id && strval($usercheck->sent_email) === '1')
+				foreach($updated_portal_users as $usercheck) { 
+					if ($user->id === $usercheck->id && strval($usercheck->sent_email) === '1') {
+
+						// Clear Browser Cache
+
+						header('Clear-Site-Data: "*"');
 						
 						// API Response Upon Success
 
 						return rest_ensure_response(['message' => 'temporary password sent to corresponding email.', 'data' => ['email' => $email, 'sent_email' => $usercheck->sent_email]]);
 					}
 				}
+
+				// Clear Browser Cache
+
+				header('Clear-Site-Data: "*"');
 
 				// If Error In Updating 'sent_email' Column, Throw Error
 						
@@ -1272,8 +1272,12 @@
 
 							$updated2_portal_users = $wpdb->get_results("SELECT * FROM ". $portal_table_name);
 
-							foreach($updated2_portal_users as $usercheck2) { {
-								if ($usercheck->id === $usercheck2->id && strval($usercheck2->sent_email) === '1')
+							foreach($updated2_portal_users as $usercheck2) { 
+								if ($usercheck->id === $usercheck2->id && strval($usercheck2->sent_email) === '1') {
+
+									// Clear Browser Cache
+
+									header('Clear-Site-Data: "*"');
 									
 									// API Response Upon Success
 
@@ -1282,6 +1286,10 @@
 							}
 
 							// If Error In Updating 'sent_email' Column, Throw Error
+
+							// Clear Browser Cache
+
+							header('Clear-Site-Data: "*"');
 						
 							return new WP_Error('error updating `sent_email` column', 'new temporary password was regenerated and email sent, but failed to update `sent_email` column in table row to indicate email sent. please manually checkoff that this portal user received an email.', ['status' => 500, 'id' => $user->id, 'password' => $random_password, 'sent_email' => $usercheck->sent_email]);
 							
@@ -1339,9 +1347,13 @@
 
 				$updated2_portal_users = $wpdb->get_results("SELECT * FROM ". $portal_table_name);
 
-				foreach($updated2_portal_users as $usercheck) { {
-					if ($user->id === $usercheck->id && strval($usercheck->sent_email) === '1')
+				foreach($updated2_portal_users as $usercheck) { 
+					if ($user->id === $usercheck->id && strval($usercheck->sent_email) === '1') {
 						
+						// Clear Browser Cache
+
+						header('Clear-Site-Data: "*"');
+
 						// API Response Upon Success
 
 						return rest_ensure_response(['message' => 'portal user `sent_email` marked as being sent successfully', 'data' => ['id' => $user->id, 'sent_email' => $usercheck->sent_email]]);
