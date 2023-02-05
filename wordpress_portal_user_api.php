@@ -229,7 +229,7 @@
 			return rest_ensure_response(['message' => 'portal user logged out successfully.']);
 		}
 
-		// Clear Browser Cache
+		// Clear Browser Data
 
 		header('Clear-Site-Data: "*"');
 
@@ -607,6 +607,11 @@
 		// Check If Portal Table Is Empty
 
 		if ($portal_users === null || count($portal_users) === 0) {
+
+			// Clear Cache
+
+			headers('Clear-Site-Data: "cache"');
+
 			return rest_ensure_response(['message' => 'portal admin logged in successfully. portal users table is currently empty.', 'data' => []]);
 		
 		} else {
@@ -632,6 +637,10 @@
 			}
 			
 			// Return Portal Users If Found In Table
+
+			// Clear Cache
+
+			header('Clear-Site-Data: "cache"');
 
 			return rest_ensure_response(['message' => 'portal admin logged in successfully. portal users data retrieved successfully.', 'data' => $sanitized_data]);
 		
@@ -731,6 +740,10 @@
 					
 					if (wp_check_password($random_password, $usercheck->password)) {
 
+						// Clear Cache
+
+						header('Clear-Site-Data: "cache"');
+
 						// Send Email To Portal User.  If Email Fails, Throw Error
 
 						if (!send_portal_user_email('created', $usercheck->email, $random_password)) {
@@ -749,14 +762,22 @@
 
 						$updated2_portal_users = $wpdb->get_results("SELECT * FROM ". $portal_table_name);
 
-						foreach($updated2_portal_users as $usercheck2) { {
-							if ($usercheck->id === $usercheck2->id && strval($usercheck2->sent_email) === '1')
+						foreach($updated2_portal_users as $usercheck2) { 
+							if ($usercheck->id === $usercheck2->id && strval($usercheck2->sent_email) === '1') {
+
+								// Clear Cache
+
+								header('Clear-Site-Data: "cache"');
 								
 								// API Response Upon Success
 
 								return rest_ensure_response(['message' => 'portal user created successfully', 'data' => ['id' => $usercheck->id, 'password' => $random_password, 'sent_email' => $usercheck2->sent_email]]);
 							}
 						}
+
+						// Clear Cache
+
+						header('Clear-Site-Data: "cache"');
 
 						// If Error In Updating 'sent_email' Column, Throw Error
 						
@@ -906,6 +927,10 @@
 							return new WP_Error('error updating password', 'portal user password did not update correctly.  try regenerating a new temporary password.', ['status' => 500]);
 						}
 
+						// Clear Cache
+
+						header('Clear-Site-Data: "cache"');
+
 						return rest_ensure_response(['message' => 'portal user updated successfully.', 'data' => ['id' => $usercheck->id]]);
 					}
 				}
@@ -995,6 +1020,10 @@
 		if (!send_portal_user_email('deleted', $user_deleted_email, null)) {
 			return new WP_Error('error sending email', 'user deleted, but email did not send to notify user.  send an email to the user informing them of this.', ['status' => 500, 'id' => $user_id]);
 		}
+
+		// Clear Cache
+
+		header('Clear-Site-Data: "cache"');
 		
 		// If User Delete Was Successful, Return Success Message
 		
@@ -1073,6 +1102,10 @@
 		
 		foreach($portal_users as $user) {
 			if (strval($user->id) === strval($user_id)) {
+
+				// Clear Cache
+
+				header('Clear-Site-Data: "cache"');
 
 				// Return API Response
 
@@ -1167,7 +1200,7 @@
 				foreach($updated_portal_users as $usercheck) { 
 					if ($user->id === $usercheck->id && strval($usercheck->sent_email) === '1') {
 
-						// Clear Browser Cache
+						// Clear Browser Data
 
 						header('Clear-Site-Data: "*"');
 						
@@ -1177,7 +1210,7 @@
 					}
 				}
 
-				// Clear Browser Cache
+				// Clear Browser Data
 
 				header('Clear-Site-Data: "*"');
 
@@ -1266,6 +1299,10 @@
 
 							foreach($updated2_portal_users as $usercheck2) { 
 								if ($usercheck->id === $usercheck2->id && strval($usercheck2->sent_email) === '1') {
+
+									// Clear Cache
+
+									header('Clear-Site-Data: "cache"');
 									
 									// API Response Upon Success
 
@@ -1333,6 +1370,10 @@
 
 				foreach($updated2_portal_users as $usercheck) { 
 					if ($user->id === $usercheck->id && strval($usercheck->sent_email) === '1') {
+
+						// Clear Cache
+
+						header('Clear-Site-Data: "cache"');
 
 						// API Response Upon Success
 
