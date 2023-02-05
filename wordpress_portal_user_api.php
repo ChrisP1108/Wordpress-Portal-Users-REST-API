@@ -98,6 +98,10 @@
 		} else {
 			setcookie('portal_user', $id_scrambled, time() + ( 7 * DAY_IN_SECONDS ), '/', '', 0, true);
 		}
+
+		// Set Public Cookie To Show User Log In For Browser Cache Clearing
+
+		setcookie('portal_logged_in', 'true', time() + ( 7 * DAY_IN_SECONDS ), '/', '', 0);
 	}
 
 	// Unscramble Portal Cookie And Returns Admin/User ID
@@ -210,6 +214,18 @@
 	// Removes Admin/User Portal Cookies 
 
 	function remove_portal_cookie() {
+
+		// Clear Browser Data
+
+		header('Clear-Site-Data: "*"');
+
+		// Clear Cache Wordpress
+
+		wp_cache_flush();
+
+		// Remove 'portal_logged_in' Cookie
+
+		setcookie('portal_logged_in', 'true', time() - 3600, '/', '', 0);
 		
 		// Remove Cookie Based On If User Has Admin Or Portal User Cookie To Logout
 		
@@ -228,14 +244,6 @@
 			setcookie('portal_user', 'logged_out', time() - 3600, '/', '', 0);
 			return rest_ensure_response(['message' => 'portal user logged out successfully.']);
 		}
-
-		// Clear Browser Data
-
-		header('Clear-Site-Data: "*"');
-
-		// Clear Cache Wordpress
-
-		wp_cache_flush();
 		
 		// If No Admin Or Portal User Cookies Found, Throw Error
 		
@@ -1292,6 +1300,10 @@
 							),
 								array('id' => $usercheck->id)
 							);
+
+							// Set Cookie That Portal User Information Was Updated To Prevent Loop Due To Browser Cache
+
+							setcookie('portal_user_information_updated', $id_scrambled, time() + 60000, '/', '', 0);
 
 							// Check Database That 'sent_email' Column Was Updated Successfully
 
