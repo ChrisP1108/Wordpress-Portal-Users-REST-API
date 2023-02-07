@@ -223,9 +223,10 @@
 
 		wp_cache_flush();
 
-		// Remove 'portal_logged_in' Cookie
+		// Remove 'portal_logged_in' Cookie and 'portal_user_information_updated' cookies
 
 		setcookie('portal_logged_in', 'true', time() - 3600, '/', '', 0);
+		setcookie('portal_user_information_updated', 'true', time() - 3600, '/', '', 0);
 		
 		// Remove Cookie Based On If User Has Admin Or Portal User Cookie To Logout
 		
@@ -361,7 +362,6 @@
 
 		$headers = [
             "From: noreply@partnerwithmagellan.com",
-            "MIME-Version: 1.0",
             "Content-type: text/html; charset=UTF-8"
         ];
 
@@ -618,7 +618,7 @@
 
 			// Clear Cache
 
-			headers('Clear-Site-Data: "cache"');
+			header('Clear-Site-Data: "cache"');
 
 			return rest_ensure_response(['message' => 'portal admin logged in successfully. portal users table is currently empty.', 'data' => []]);
 		
@@ -747,10 +747,6 @@
 					// Checks Password.  If No Match, Throw Error
 					
 					if (wp_check_password($random_password, $usercheck->password)) {
-
-						// Clear Cache
-
-						header('Clear-Site-Data: "cache"');
 
 						// Send Email To Portal User.  If Email Fails, Throw Error
 
@@ -938,6 +934,10 @@
 						// Clear Cache
 
 						header('Clear-Site-Data: "cache"');
+
+						// Set Cookie That Portal User Information Was Updated To Prevent Loop Due To Browser Cache
+
+						setcookie('portal_user_information_updated', 'true', time() + 10000, '/', '', 0);
 
 						return rest_ensure_response(['message' => 'portal user updated successfully.', 'data' => ['id' => $usercheck->id]]);
 					}
@@ -1300,10 +1300,6 @@
 							),
 								array('id' => $usercheck->id)
 							);
-
-							// Set Cookie That Portal User Information Was Updated To Prevent Loop Due To Browser Cache
-
-							setcookie('portal_user_information_updated', $id_scrambled, time() + 60000, '/', '', 0);
 
 							// Check Database That 'sent_email' Column Was Updated Successfully
 
