@@ -223,10 +223,10 @@
 
 		wp_cache_flush();
 
-		// Remove 'portal_logged_in' Cookie and 'portal_user_information_updated' cookies
+		// Remove 'portal_logged_in' Cookie and 'portal_user_information_updated' Cookie
 
 		setcookie('portal_logged_in', 'true', time() - 3600, '/', '', 0);
-		setcookie('portal_user_information_updated', 'true', time() - 3600, '/', '', 0);
+		setcookie('portal_user_information_updated', 'true', time() -3600, '/', '', 0);
 		
 		// Remove Cookie Based On If User Has Admin Or Portal User Cookie To Logout
 		
