@@ -250,6 +250,10 @@
 
 	function remove_portal_cookie() {
 
+		// Remove Portal Secret Key
+
+		setcookie('portal_key', 'logged_out', time() - 3600, '/', '', 0);
+
 		// Clear Browser Data
 
 		header('Clear-Site-Data: "cache"');
@@ -275,10 +279,6 @@
 			setcookie('portal_user', 'logged_out', time() - 3600, '/', '', 0);
 			return rest_ensure_response(['message' => 'portal user logged out successfully.']);
 		}
-
-		// Remove Portal Secret Key
-
-		setcookie('portal_key', 'logged_out', time() - 3600, '/', '', 0);
 		
 		// If No Admin Or Portal User Cookies Found, Throw Error
 		
