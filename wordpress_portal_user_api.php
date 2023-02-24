@@ -1,5 +1,4 @@
 <?php
-
 // PAGE ACCESS RESTRICTIONS
 
 	// Allows Access To Portal Pages Only If Portal User Or Portal Admin Cookie Present. If Not, Redirected To Portal User Login
@@ -121,9 +120,11 @@
 			setcookie('portal_user', $id_scrambled, time() + ( $cookie_days * DAY_IN_SECONDS ), '/', '', 0, true);
 		}
 
-		// Set Public Cookie To Show User Log In For Browser Cache Clearing
+		// Set Security Cookie For Extra Security
 
-		setcookie('portal_logged_in', 'true', time() + ( $cookie_days * DAY_IN_SECONDS ), '/', '', 0);
+		$portal_secret_key = '4&c!0)b2x$-~[<h3Nz|';
+
+		setcookie('portal_key', wp_hash_password($portal_secret_key), time() + ( $cookie_days * DAY_IN_SECONDS ), '/', '', 0, true);
 	}
 
 	// Unscramble Portal Cookie And Returns Admin/User ID
@@ -189,6 +190,18 @@
     function verify_portal_cookie($type) {
 
 		global $wpdb;
+
+		// Set Security Cookie For Extra Security
+
+		$portal_secret_key = '4&c!0)b2x$-~[<h3Nz|';
+
+		// Check That Security Cookie Is Present And Valid
+
+		if (isset($_COOKIE["portal_key"])) {
+			if (!wp_check_password($portal_secret_key, ($_COOKIE["portal_key"]))) {
+				return false;
+			}
+		} else return false;
 		
 		// Check For Admin Cookie And See If Id In Cookie Corresponds To An Admin
 		
@@ -244,11 +257,6 @@
 		// Clear Cache Wordpress
 
 		wp_cache_flush();
-
-		// Remove 'portal_logged_in' Cookie and 'portal_user_information_updated' Cookie
-
-		setcookie('portal_logged_in', 'true', time() - 3600, '/', '', 0);
-		setcookie('portal_user_information_updated', 'true', time() -3600, '/', '', 0);
 		
 		// Remove Cookie Based On If User Has Admin Or Portal User Cookie To Logout
 		
@@ -267,6 +275,10 @@
 			setcookie('portal_user', 'logged_out', time() - 3600, '/', '', 0);
 			return rest_ensure_response(['message' => 'portal user logged out successfully.']);
 		}
+
+		// Remove Portal Secret Key
+
+		setcookie('portal_key', 'logged_out', time() - 3600, '/', '', 0);
 		
 		// If No Admin Or Portal User Cookies Found, Throw Error
 		
@@ -1038,10 +1050,6 @@
 						// Clear Cache
 
 						header('Clear-Site-Data: "cache"');
-
-						// Set Cookie That Portal User Information Was Updated To Prevent Loop Due To Browser Cache
-
-						setcookie('portal_user_information_updated', 'true', time() + 10000, '/', '', 0);
 
 						return rest_ensure_response(['message' => 'portal user updated successfully.', 'data' => ['id' => $usercheck->id]]);
 					}
