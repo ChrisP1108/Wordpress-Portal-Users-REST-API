@@ -239,7 +239,7 @@
 
 		// Clear Browser Data
 
-		header('Clear-Site-Data: "*"');
+		header('Clear-Site-Data: "cache"');
 
 		// Clear Cache Wordpress
 
@@ -362,8 +362,8 @@
 		// Email Template For Portal User Created, Password Reset
 
 		$html_email_template = '
-            <table cellspacing="0" cellpadding="0" style="background-image: url(http://www.partnerwithmagellan.com/wp-content/uploads/2023/02/email_background.jpg); background-color: black; background-repeat: no-repeat; background-position: center; background-size: cover; padding: 32px 16px; width: 100%; font-family: "Roboto";">
-                <tbody style="margin: 0 auto; font-family: "Roboto";">
+            <table cellspacing="0" cellpadding="0" style="background-image: url(http://www.partnerwithmagellan.com/wp-content/uploads/2023/02/email_background.jpg); background-color: black; background-repeat: no-repeat; background-position: center; background-size: cover; padding: 32px 16px; width: 100%;">
+                <tbody style="margin: 0 auto;">
             
                     <!-- Magellan Financial Logo -->
             
@@ -380,10 +380,10 @@
                     <tr width="400">
                         <td height="43" colspan="3" width="400" align="center" style="padding-bottom: 12px; padding-top: 16px;">
                             <blockquote style="margin: 0; max-width: 400px; margin: 0 auto; border-left: 4px #e3530f solid; padding-left: 24px;">
-                                <p style="color: white; text-align: left; font-size: 32px; line-height: 36px; margin-bottom: 24px; font-family: "Roboto"; padding-top: 8px;">
+                                <p style="color: white; text-align: left; font-size: 32px; line-height: 36px; margin-bottom: 24px; padding-top: 8px;">
                                     <strong>'. $heading .'</strong>
                                 </p>
-                                <p style="color: white; text-align: left; font-size: 16px; line-height: 24px; margin: 0; font-family: "Roboto"; padding-bottom: 8px;">
+                                <p style="color: white; text-align: left; font-size: 16px; line-height: 24px; margin: 0; padding-bottom: 8px;">
                                     '. $type_message .'
                                 </p>
                             </blockquote>
@@ -395,7 +395,7 @@
                     <tr width="400">
                         <td colspan="3" height="27" width="400" align="center" style="padding-top: 16px;">
                             <blockquote style="margin: 0; max-width: 400px; margin: 0 auto; padding-left: 28px; border:none; min-width: 232px; white-space: nowrap;">
-                                <p style="color: white; line-height: 22px; font-family: "Roboto"; text-align: left;">
+                                <p style="color: white; line-height: 22px; text-align: left;">
                                     <strong>Password: </strong>
                                     '. $password .'
                                 </p>
@@ -409,7 +409,7 @@
                         <td height="43" colspan="3" width="400" align="center" style="padding-top: 48px;">
                             <blockquote style="margin: 0; max-width: 400px; margin: 0 auto; padding-left: 28px; border:none; text-align: left;">
                                 <a href="https://www.partnerwithmagellan.com/forge-resource-center-home/" target="_blank" style="text-decoration: none; text-align: center; max-width: 200px;" rel="noopener">
-                                    <p style="color: white; font-size: 16px; line-height: 20px; margin: 0; background: #00000090; max-width: 200px; padding: 12px; border: 2px #e3530f solid; font-family: "Roboto"; text-align: center;">
+                                    <p style="color: white; font-size: 16px; line-height: 20px; margin: 0; background: #00000090; max-width: 200px; padding: 12px; border: 2px #e3530f solid; text-align: center;">
                                         <strong>CLICK HERE TO LOGIN</strong>
                                     </p>
                                 </a>
@@ -423,8 +423,8 @@
 		// Email Template For User Deleted
 
 		$deleted_user_html_template = '
-            <table cellspacing="0" cellpadding="0" style="background-image: url(http://www.partnerwithmagellan.com/wp-content/uploads/2023/02/email_background.jpg); background-color: black; background-repeat: no-repeat; background-position: center; background-size: cover; padding: 32px 16px; width: 100%; font-family: "Roboto";">
-                <tbody style="margin: 0 auto; font-family: "Roboto";">
+            <table cellspacing="0" cellpadding="0" style="background-image: url(http://www.partnerwithmagellan.com/wp-content/uploads/2023/02/email_background.jpg); background-color: black; background-repeat: no-repeat; background-position: center; background-size: cover; padding: 32px 16px; width: 100%;">
+                <tbody style="margin: 0 auto;">
             
                     <!-- Magellan Financial Logo -->
             
@@ -441,10 +441,10 @@
                     <tr width="400">
                         <td height="43" colspan="3" width="400" align="center" style="padding-bottom: 12px; padding-top: 16px;">
                             <blockquote style="margin: 0; max-width: 400px; margin: 0 auto; border-left: 4px #e3530f solid; padding-left: 24px;">
-                                <p style="color: white; text-align: left; font-size: 32px; line-height: 36px; margin-bottom: 24px; font-family: "Roboto"; padding-top: 8px;">
+                                <p style="color: white; text-align: left; font-size: 32px; line-height: 36px; margin-bottom: 24px; padding-top: 8px;">
                                     <strong>'. $heading .'</strong>
                                 </p>
-                                <p style="color: white; text-align: left; font-size: 16px; line-height: 24px; margin: 0; font-family: "Roboto"; padding-bottom: 8px;">
+                                <p style="color: white; text-align: left; font-size: 16px; line-height: 24px; margin: 0; padding-bottom: 8px;">
                                     '. $type_message .'
                                 </p>
                             </blockquote>
@@ -658,6 +658,7 @@
 		$body = json_decode($req->get_body());
 		$admin_username = $body->admin_username ?? NULL;
 		$admin_password = $body->admin_password ?? NULL;
+		$remember = $body->remember ?? false;
 
 		// Check If Username Includes "@" Email To See If email/username Only Was Provided
 
@@ -703,8 +704,7 @@
 
 						// Generate Cookie For Portal Admin
 
-						generate_portal_cookie($admin_id, true, true);
-
+						generate_portal_cookie($admin_id, true, $remember);
 					}
 				}
 			}
@@ -1315,7 +1315,7 @@
 
 						// Clear Browser Data
 
-						header('Clear-Site-Data: "*"');
+						header('Clear-Site-Data: "cache"');
 						
 						// API Response Upon Success
 
@@ -1325,7 +1325,7 @@
 
 				// Clear Browser Data
 
-				header('Clear-Site-Data: "*"');
+				header('Clear-Site-Data: "cache"');
 
 				// If Error In Updating 'sent_email' Column, Throw Error
 						
