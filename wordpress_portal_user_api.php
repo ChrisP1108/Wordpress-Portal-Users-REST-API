@@ -755,6 +755,8 @@
 					'email' => htmlspecialchars($user->email),
 					'updated_password' => htmlspecialchars($user->updated_password),
 					'sent_email' => htmlspecialchars($user->sent_email),
+					'times_logged_in' => htmlspecialchars($user->times_logged_in),
+					'last_login' => htmlspecialchars($user->last_login),
 					'created' => htmlspecialchars($user->created),
 					'updated' => htmlspecialchars($user->updated)
 				];
@@ -850,7 +852,6 @@
 			'updated_password' => 0,
 			'sent_email' => 0,
 			'times_logged_in' => 0,
-			'last_login' => $created,
 			'created' => $created
 		));
 		
