@@ -1,49 +1,57 @@
 <?php
-// DATABASE INIT
 
-    // Define Wordpress Database Methods And Database Table
-    
-	global $wpdb;
+// PAGE ACCESS RESTRICTIONS
 
-	$portal_table_name = $wpdb->prefix . "portal_users";
-	$charset_collate = $wpdb->get_charset_collate();
+	// Allows Access To Portal Pages Only If Portal User Or Portal Admin Cookie Present. If Not, Redirected To Portal User Login
+	
+	add_action('template_redirect', function() {
 
-	// Checks If Client Portal Users Database 'portal_users' Exists And Creates It If It Does Not Exist
+		// Portal Page URL Slugs That Will Be Restricted To Portal Users And Portal Admins Only
 
-	if ($wpdb->get_var("SHOW TABLES LIKE '$portal_table_name'") != $portal_table_name) {
-		$sql = "CREATE TABLE $portal_table_name (
-			id mediumint(11) NOT NULL AUTO_INCREMENT,
-			first_name varchar(100) NOT NULL,
-			last_name varchar(100) NOT NULL,
-			company varchar(255) NOT NULL,
-            email varchar(100) NOT NULL,
-            password varchar(255) NOT NULL,
-			updated_password boolean NOT NULL default 0,
-			sent_email boolean NOT NULL default 0,
-            created datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
-			updated datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
-			PRIMARY KEY (id)
-		) $charset_collate;";
+		$restricted_pages = [
+			'forge-resource-center-additional-links',
+			'forge-resource-center-green-screen',
+			'forge-resource-center-home',
+			'forge-resource-center-live-events',
+			'forge-resource-center-monthly-marketing',
+			'forge-resource-center-radio',
+			'forge-resource-center-television'
+		];
+
+		// Portal User Login Page URL
+
+		$portal_login_url = 'https://www.partnerwithmagellan.com/portal-user-login/';
 		
-		require_once( ABSPATH . 'wp-admin/includes/upgrade.php');
-		dbDelta( $sql );
-	} 
+		foreach($restricted_pages as $page) {
+			if (is_page($page)) {
+				if (!verify_portal_cookie('admin') && !verify_portal_cookie('user') && !is_user_logged_in()) {
+					wp_redirect($portal_login_url); 
+					exit();
+				}
+			}
+		}
+		
+		// Redirect From Login To Portal Home Page If Portal User Or Admin Cookie Found
+		
+		// Portal User Logged In Homepage URL
 
-// XSS MALICIOUS JAVASCRIPT CODE INJECTION ATTACK PREVENTION
+		$portal_home_url = 'https://www.partnerwithmagellan.com/forge-resource-center-home/';
 
-	// Checks If Script Tag Is Present. If Found, Error Thrown
-
-	function var_secure($var) {
-		if (str_contains($var, '<script>')) {
-			return false;
-		} else return true;
-	}
+		if (is_page('portal-user-login')) {
+			if (verify_portal_cookie('admin') || verify_portal_cookie('user')) {
+				if (!isset($_COOKIE["wordpress_test_cookie"])) {
+					wp_redirect($portal_home_url); 
+					exit();
+				}
+			}
+		}
+	});
 
 // COOKIES
 
 	// Generate Portal Admin/User Cookie
 
-	function generate_portal_cookie($id, $is_admin) {
+	function generate_portal_cookie($id, $is_admin, $remember) {
 
 		$id_multiplied = strval(intval($id) * 237);
 
@@ -90,18 +98,32 @@
 			}
 		}
 
+		// Number Of Days Until Cookie Expires If User Wants To Remain Logged In.  If Not Remember, Cookie Expires After 1 Day.  This Determines How Long A User Will Stay Logged In For
+
+		$cookie_days_remember = 7;
+
+		$cookie_not_remembered = 1;
+
+		// Sets Cookie Days Till Expiration Until Depending If User Click On Remember
+
+		$cookie_days = $cookie_not_remembered;
+
+		if ($remember) {
+			$cookie_days = $cookie_days_remember;
+		} 
+
 		// Sets Cookie Based On If User Is Admin Or Portal User
 
 		if ($is_admin) {
 			$added_admin_salt = '^' . $id_scrambled . '{';
-			setcookie('portal_admin', $added_admin_salt, time() + ( 7 * DAY_IN_SECONDS ), '/', '', 0, true);
+			setcookie('portal_admin', $added_admin_salt, time() + ( $cookie_days * DAY_IN_SECONDS ), '/', '', 0, true);
 		} else {
-			setcookie('portal_user', $id_scrambled, time() + ( 7 * DAY_IN_SECONDS ), '/', '', 0, true);
+			setcookie('portal_user', $id_scrambled, time() + ( $cookie_days * DAY_IN_SECONDS ), '/', '', 0, true);
 		}
 
 		// Set Public Cookie To Show User Log In For Browser Cache Clearing
 
-		setcookie('portal_logged_in', 'true', time() + ( 7 * DAY_IN_SECONDS ), '/', '', 0);
+		setcookie('portal_logged_in', 'true', time() + ( $cookie_days * DAY_IN_SECONDS ), '/', '', 0);
 	}
 
 	// Unscramble Portal Cookie And Returns Admin/User ID
@@ -251,13 +273,53 @@
 		return new WP_Error('no portal cookies found', 'unable to perform logout as no portal admin or user cookie found', ['status' => 400]);
 	}
 
+// DATABASE INIT
+
+    // Define Wordpress Database Methods And Database Table
+    
+	global $wpdb;
+
+	$portal_table_name = $wpdb->prefix . "portal_users";
+	$charset_collate = $wpdb->get_charset_collate();
+
+	// Checks If Client Portal Users Database 'portal_users' Exists And Creates It If It Does Not Exist
+
+	if ($wpdb->get_var("SHOW TABLES LIKE '$portal_table_name'") != $portal_table_name) {
+		$sql = "CREATE TABLE $portal_table_name (
+			id mediumint(11) NOT NULL AUTO_INCREMENT,
+			first_name varchar(100) NOT NULL,
+			last_name varchar(100) NOT NULL,
+			company varchar(255) NOT NULL,
+            email varchar(100) NOT NULL,
+            password varchar(255) NOT NULL,
+			updated_password boolean NOT NULL default 0,
+			sent_email boolean NOT NULL default 0,
+            created datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
+			updated datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
+			PRIMARY KEY (id)
+		) $charset_collate;";
+		
+		require_once( ABSPATH . 'wp-admin/includes/upgrade.php');
+		dbDelta( $sql );
+	} 
+
+// XSS MALICIOUS JAVASCRIPT CODE INJECTION ATTACK PREVENTION
+
+	// Checks If Opening Or Closing Tag Is Present. If Found, Error Thrown
+
+	function var_secure($var) {
+		if (str_contains($var, '<') || str_contains($var, '>')) {
+			return false;
+		} else return true;
+	}
+
 // SEND EMAIL
 
     // Sends Email. Message Generated Based On Type
 
 	function send_portal_user_email($type, $email, $password) {
 
-		// Generate Message Based On Type (Create User, Forgotten Password, Admin Regenerate New User Password)
+		// Generate Message Based On Type (Create User, Forgotten Password, Admin Regenerate New User Password, Or Portal User Deleted)
 
 		$subject_message = null;
 		$type_message = null;
@@ -265,18 +327,23 @@
 		switch($type) {
 			case 'created':
 				$subject_message = 'Magellan Portal User Created';
-				$type_message = 'You have been successfully registered to access the Magellan Portal';
+                $heading = "Welcome to the portal.";
+				$type_message = 'You have been successfully registered to access the Magellan Portal. Please see your temporary password below and click the button to login.';
 				break;
 			case 'forgot':
 				$subject_message = 'Magellan Portal User Password Recovery';
-				$type_message = 'You have requested to recover your forgotten password to the Magellan Portal';
+                $heading = "Hello again.";
+				$type_message = 'You have requested to recover your forgotten password to the Magellan Portal. Please see your temporary password below and click the button to regain access to the Magellan Portal.';
 				break;
 			case 'regenerate':
 				$subject_message = 'Magellan Portal User Password Reset By Admin';
-				$type_message = 'The Magellan Portal Administrator has reset your password';
+                $heading = "Hello from the administrator.";
+				$type_message = 'The Magellan Portal Administrator has reset your password. Please see your temporary password below and click the button to regain access to the Magellan Portal.';
 				break;
 			case 'deleted':
 				$subject_message = 'Magellan Portal User Deleted';
+                $heading = "Sorry to see you go.";
+                $type_message = "We're glad you had the opportunity to explore the Magellan Portal.  Best of luck to you.";
 				break;
 		}
 
@@ -295,60 +362,97 @@
 		// Email Template For Portal User Created, Password Reset
 
 		$html_email_template = '
-			<table width="600" border="0" cellspacing="0" cellpadding="0"> 
-				<tbody>
-					<tr>
-						<td colspan="3" style="background: #ffffff; Padding: 30px; " align="center"><img src=http://box2496.temp.domains/~foundbw0/magellanfinancial.com/wp-content/uploads/2022/08/email_logo.png width="200"  alt=""/></td>
-					</tr>
-					<tr>
-						<td height="43" colspan="3" style="padding-top:20px;">
-							<blockquote>
-								<p style="text-align: center;"><strong>Hello. '. $type_message . '. See login credentials below and url link to go to the portal login page.</strong></p>
-							</blockquote>
-						</td>
-					</tr>
-					<tr>
-						<td width="300" height="27" align="right"><p><strong>Email:</strong></p></td>
-						<td width="6"> </td>
-						<td width="405">' . $email . '</td>
-					</tr>
-					<tr>
-						<td width="300" height="27" align="right"><p><strong>Password:</strong></p></td>
-						<td width="6"> </td>
-						<td width="405">' . $password . '</td>
-					</tr>
-					<tr>
-						<td width="6"> </td>
-						<td width="6"> </td>
-						<td width="6"> </td>
-      				</tr>
-					<tr>
-						<td width="300" height="27" align="right"><p><strong>Login Page Url:</strong></p></td>
-						<td width="6"> </td>
-						<td width="405"><a href="http://box2496.temp.domains/~foundbw0/magellanfinancial.com/test-portal-user-login/" target="_blank" rel="noopener">Click here to login</a></td>
-				  	</tr>
-				</tbody>          
-			</table>
+            <table cellspacing="0" cellpadding="0" style="background-image: url(http://www.partnerwithmagellan.com/wp-content/uploads/2023/02/email_background.jpg); background-color: black; background-repeat: no-repeat; background-position: center; background-size: cover; padding: 32px 16px; width: 100%; font-family: "Roboto";">
+                <tbody style="margin: 0 auto; font-family: "Roboto";">
+            
+                    <!-- Magellan Financial Logo -->
+            
+                    <tr>
+                        <td colspan="3" style="padding-bottom: 48px;" align="center">
+                            <blockquote style="margin: 0; border:none;">
+                                <img src="http://www.partnerwithmagellan.com/wp-content/uploads/2022/08/MAG-LOGO-HORZ-HEX-RevColor.svg" alt="" style="max-width: 428px;">
+                            </blockquote>
+                        </td>
+                    </tr>
+            
+                    <!-- Main Section With Left Vertical Border -->
+            
+                    <tr width="400">
+                        <td height="43" colspan="3" width="400" align="center" style="padding-bottom: 12px; padding-top: 16px;">
+                            <blockquote style="margin: 0; max-width: 400px; margin: 0 auto; border-left: 4px #e3530f solid; padding-left: 24px;">
+                                <p style="color: white; text-align: left; font-size: 32px; line-height: 36px; margin-bottom: 24px; font-family: "Roboto"; padding-top: 8px;">
+                                    <strong>'. $heading .'</strong>
+                                </p>
+                                <p style="color: white; text-align: left; font-size: 16px; line-height: 24px; margin: 0; font-family: "Roboto"; padding-bottom: 8px;">
+                                    '. $type_message .'
+                                </p>
+                            </blockquote>
+                        </td>
+                    </tr>
+            
+                    <!-- Password Info -->
+
+                    <tr width="400">
+                        <td colspan="3" height="27" width="400" align="center" style="padding-top: 16px;">
+                            <blockquote style="margin: 0; max-width: 400px; margin: 0 auto; padding-left: 28px; border:none; min-width: 232px; white-space: nowrap;">
+                                <p style="color: white; line-height: 22px; font-family: "Roboto"; text-align: left;">
+                                    <strong>Password: </strong>
+                                    '. $password .'
+                                </p>
+                            </blockquote>
+                        </td>
+                    </tr>
+            
+                    <!-- Login Button -->
+            
+                    <tr width="400">
+                        <td height="43" colspan="3" width="400" align="center" style="padding-top: 48px;">
+                            <blockquote style="margin: 0; max-width: 400px; margin: 0 auto; padding-left: 28px; border:none; text-align: left;">
+                                <a href="https://www.partnerwithmagellan.com/forge-resource-center-home/" target="_blank" style="text-decoration: none; text-align: center; max-width: 200px;" rel="noopener">
+                                    <p style="color: white; font-size: 16px; line-height: 20px; margin: 0; background: #00000090; max-width: 200px; padding: 12px; border: 2px #e3530f solid; font-family: "Roboto"; text-align: center;">
+                                        <strong>CLICK HERE TO LOGIN</strong>
+                                    </p>
+                                </a>
+                            </blockquote>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
 		';
 
 		// Email Template For User Deleted
 
 		$deleted_user_html_template = '
-			<table width="600" border="0" cellspacing="0" cellpadding="0"> 
-				<tbody>
-					<tr>
-						<td colspan="3" style="background: #ffffff; Padding: 30px; " align="center"><img src=http://box2496.temp.domains/~foundbw0/magellanfinancial.com/wp-content/uploads/2022/08/email_logo.png width="200"  alt=""/></td>
-					</tr>
-					<tr>
-						<td height="43" colspan="3" style="padding-top:20px;">
-							<blockquote>
-								<p style="text-align: center;"><strong>Hello. Your registration with the Magellan Portal Has Been Terminated.  If you feel this is an error, contact Magellan.</strong></p>
-							</blockquote>
-						</td>
-					</tr>
-				</tbody>          
-			</table>
-		';
+            <table cellspacing="0" cellpadding="0" style="background-image: url(http://www.partnerwithmagellan.com/wp-content/uploads/2023/02/email_background.jpg); background-color: black; background-repeat: no-repeat; background-position: center; background-size: cover; padding: 32px 16px; width: 100%; font-family: "Roboto";">
+                <tbody style="margin: 0 auto; font-family: "Roboto";">
+            
+                    <!-- Magellan Financial Logo -->
+            
+                    <tr>
+                        <td colspan="3" style="padding-bottom: 48px;" align="center">
+                            <blockquote style="margin: 0; border:none;">
+                                <img src="http://www.partnerwithmagellan.com/wp-content/uploads/2022/08/MAG-LOGO-HORZ-HEX-RevColor.svg" alt="" style="max-width: 428px;">
+                            </blockquote>
+                        </td>
+                    </tr>
+            
+                    <!-- Goodbye Section -->
+            
+                    <tr width="400">
+                        <td height="43" colspan="3" width="400" align="center" style="padding-bottom: 12px; padding-top: 16px;">
+                            <blockquote style="margin: 0; max-width: 400px; margin: 0 auto; border-left: 4px #e3530f solid; padding-left: 24px;">
+                                <p style="color: white; text-align: left; font-size: 32px; line-height: 36px; margin-bottom: 24px; font-family: "Roboto"; padding-top: 8px;">
+                                    <strong>'. $heading .'</strong>
+                                </p>
+                                <p style="color: white; text-align: left; font-size: 16px; line-height: 24px; margin: 0; font-family: "Roboto"; padding-bottom: 8px;">
+                                    '. $type_message .'
+                                </p>
+                            </blockquote>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        ';
 
 		// Determine What Email Template To Use Based On $type Variable Value
 
@@ -599,7 +703,7 @@
 
 						// Generate Cookie For Portal Admin
 
-						generate_portal_cookie($admin_id, true);
+						generate_portal_cookie($admin_id, true, true);
 
 					}
 				}
@@ -680,7 +784,7 @@
 		// Checks That There Are No Script Tags To Avoid Malicious Code Injection
 
 		if (!var_secure($first_name) || !var_secure($last_name) || !var_secure($company) || !var_secure($email)) {
-			return new WP_Error('script tag detected', 'request will not be executed due to presence of a `<script>` tag.', ['status' => 403]);
+			return new WP_Error('< or > detected', 'request will not be executed due to the presence of a potentially malicious code tag', ['status' => 403]);
 		}
 		
 		// Capitalize First Character, LowerCase Remaining Characters For Appropriate Database Formatting.  Password Capitalization Doesn't Get Modified.
@@ -1047,11 +1151,12 @@
 
 	function login_portal_user($req) {
 
-		// Get Body Email
+		// Get Body Email, Password, And Remember Checked Value
 		
 		$body = json_decode($req->get_body());
 		$email = $body->email ?? NULL;
 		$password = $body->password ?? NULL;
+		$remember = $body->remember ?? false;
 
 		// Define Wordpress Database Methods And Database Table
 		
@@ -1086,9 +1191,9 @@
 					} else {
 						$user_id = strval($usercheck->id);
 
-						// Generate Cookie For Portal User
+						// Generate Cookie For Portal User.  If User Checked Remember Box, Then Cookie Set To Longer Expiration Time
 
-						generate_portal_cookie($user_id, false);
+						generate_portal_cookie($user_id, false, $remember);
 					}
 				}
 			}
@@ -1476,30 +1581,5 @@
 			'callback' => 'remove_portal_cookie'
 		]);
 		
-	});
-
-// PAGE ACCESS RESTRICTIONS
-
-	// Allows Access To Portal Pages Only If Portal User Or Portal Admin Cookie Present. If Not, Redirected To Portal User Login
-	
-	add_action('template_redirect', function() {
-		
-		// Restrict Access To Portal Pages And Password Update Pages
-		
-		if (is_page('test-portal-page') || is_page('test-portal-user-update-information')) {
-			if (!verify_portal_cookie('admin') && !verify_portal_cookie('user') && !is_user_logged_in()) {
-				wp_redirect( 'http://box2496.temp.domains/~foundbw0/magellanfinancial.com/test-portal-user-login/' ); 
-				exit();
-			}
-		}
-		
-		// Redirect From Login To Portal Home Page If Portal User Or Admin Cookie Found
-		
-		if (is_page('test-portal-user-login')) {
-			if (verify_portal_cookie('admin') || verify_portal_cookie('user')) {
-				wp_redirect( 'http://box2496.temp.domains/~foundbw0/magellanfinancial.com/test-portal-page/' ); 
-				exit();
-			}
-		}
 	});
 ?>
