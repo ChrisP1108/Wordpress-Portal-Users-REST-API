@@ -849,6 +849,8 @@
 			'password' => $hashed_password,
 			'updated_password' => 0,
 			'sent_email' => 0,
+			'times_logged_in' => 0,
+			'last_login' => $created,
 			'created' => $created
 		));
 		
