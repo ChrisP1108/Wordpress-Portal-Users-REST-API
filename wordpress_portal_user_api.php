@@ -306,6 +306,8 @@
             password varchar(255) NOT NULL,
 			updated_password boolean NOT NULL default 0,
 			sent_email boolean NOT NULL default 0,
+			times_logged_in mediumint(11) NOT NULL default 0,
+			last_login datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
             created datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
 			updated datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
 			PRIMARY KEY (id)
@@ -345,7 +347,7 @@
 			case 'forgot':
 				$subject_message = 'Magellan Portal User Password Recovery';
                 $heading = "Hello again.";
-				$type_message = 'You have requested to recover your forgotten password to the Magellan Portal. Please see your temporary password below and click the button to regain access to the Magellan Portal.';
+				$type_message = 'You have requested to recover your password to the Magellan Portal. Please see your temporary password below and click the button to regain access to the Magellan Portal.';
 				break;
 			case 'regenerate':
 				$subject_message = 'Magellan Portal User Password Reset By Admin';
@@ -354,7 +356,7 @@
 				break;
 			case 'deleted':
 				$subject_message = 'Magellan Portal User Deleted';
-                $heading = "Sorry to see you go.";
+                $heading = "Good luck to you.";
                 $type_message = "We're glad you had the opportunity to explore the Magellan Portal.  Best of luck to you.";
 				break;
 		}
@@ -1223,6 +1225,17 @@
 		
 		foreach($portal_users as $user) {
 			if (strval($user->id) === strval($user_id)) {
+
+				// Update times_logged_in and last_login fields
+
+				$current_time = current_time('mysql', false);
+
+				$wpdb->update($portal_table_name, array(
+					'times_logged_in' => number_format($user->times_logged_in) + 1,
+					'last_login' => $current_time
+				),
+					array('id' => $user_id)
+				);
 
 				// Clear Cache
 
