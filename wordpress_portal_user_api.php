@@ -1008,6 +1008,9 @@
 					$email = $user->email;
 				}
 				if ($password) {
+					if (strlen($password) < 8) {
+						return new WP_Error('password length too short', 'password length must be at least 8 characters', ['status' => 400]);
+					}
 					$hashed_password = wp_hash_password($password);
 				}
 				if (!$password) {
