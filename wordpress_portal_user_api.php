@@ -15,6 +15,39 @@
 		'forge-resource-center-television'
 	];
 
+	// MySql Portal Users Table Name
+
+	global $wpdb;
+	global $portal_table_name;
+	$portal_table_name = $wpdb->prefix . "portal_users";
+
+	// Select Portal Users Query
+
+	global $select_portal_users;
+	$select_portal_users = "SELECT * FROM ". $portal_table_name;
+
+	// MySql Portal Admin Users Table Name
+
+	global $admin_table_name;
+	$admin_table_name = $wpdb->prefix . "users";
+
+	// Select Portal Admins Query
+
+	global $select_portal_admins;
+	$select_portal_admins = "SELECT * FROM ". $admin_table_name;
+
+	// Portal Uses/Admin Logged In Cookie Names
+
+	global $admin_cookie_name;
+	$admin_cookie_name = "portal_admin";
+	global $user_cookie_name;
+	$user_cookie_name = "portal_user";
+
+	global $admin_cookie;
+	$admin_cookie = $_COOKIE[$admin_cookie_name];
+	global $user_cookie;
+	$user_cookie = $_COOKIE[$user_cookie_name];
+
 	// Portal User Login Page URL
 
 	global $portal_login_url;
@@ -131,9 +164,11 @@
 		} 
 
 		if ($is_admin) {
-			setcookie('portal_admin', $encoded, time() + ( $cookie_days * DAY_IN_SECONDS ), '/', '', 1, true);
+			global $admin_cookie_name;
+			setcookie($admin_cookie_name, $encoded, time() + ( $cookie_days * DAY_IN_SECONDS ), '/', '', 1, true);
 		} else {
-			setcookie('portal_user', $encoded, time() + ( $cookie_days * DAY_IN_SECONDS ), '/', '', 1, true);
+			global $user_cookie_name;
+			setcookie($user_cookie_name, $encoded, time() + ( $cookie_days * DAY_IN_SECONDS ), '/', '', 1, true);
 		}
 	}
 
@@ -164,14 +199,16 @@
     function verify_portal_cookie($type) {
 
 		global $wpdb;
-		
+		global $admin_cookie;
+		global $admin_table_name;
+		global $select_portal_admins;
+
 		// Check For Admin Cookie And See If Id In Cookie Corresponds To An Admin
 		
-		if ($type === 'admin' && isset($_COOKIE["portal_admin"])) {
-			$admin_table_name = $wpdb->prefix . "users";
-			$admins = $wpdb->get_results("SELECT * FROM ". $admin_table_name);
+		if ($type === 'admin' && isset($admin_cookie)) {
+			$admins = $wpdb->get_results($select_portal_admins);
 
-			$admin_cookie_id = get_cookie_id($_COOKIE["portal_admin"]);
+			$admin_cookie_id = get_cookie_id($admin_cookie);
 
 			if ($admin_cookie_id) {
 				foreach($admins as $admin) {
@@ -179,7 +216,7 @@
 
 						// Decode Portal Admin Cookie
 
-						$admin_cookie_decoded = cookie_decoder($_COOKIE["portal_admin"]);
+						$admin_cookie_decoded = cookie_decoder($admin_cookie);
 
 						// Check That Creation Date Matches
 
@@ -222,12 +259,15 @@
 		}
 		
 		// Check For Portal User Cookie
-		
-		if ($type === 'user' && isset($_COOKIE["portal_user"])) {
-			$portal_table_name = $wpdb->prefix . "portal_users";
-			$portal_users = $wpdb->get_results("SELECT * FROM ". $portal_table_name);
 
-			$user_cookie_id = get_cookie_id($_COOKIE["portal_user"]);
+			global $user_cookie;
+		
+		if ($type === 'user' && isset($user_cookie)) {
+			global $portal_table_name;
+			global $select_portal_users;
+			$portal_users = $wpdb->get_results($select_portal_users);
+
+			$user_cookie_id = get_cookie_id($user_cookie);
 
 			if ($user_cookie_id) {
 				foreach($portal_users as $user) {
@@ -235,7 +275,7 @@
 
 						// Decode Portal User Cookie
 
-						$user_cookie_decoded = cookie_decoder($_COOKIE["portal_user"]);
+						$user_cookie_decoded = cookie_decoder($user_cookie);
 
 						// Check That Creation Date Matches
 
@@ -285,22 +325,28 @@
 	// Removes Admin/User Portal Cookies 
 
 	function remove_portal_cookie() {
+
+		global $admin_cookie_name;
+		global $user_cookie_name;
+
+		global $admin_cookie;
+		global $user_cookie;
 		
 		// Remove Cookie Based On If User Has Admin Or Portal User Cookie To Logout
 		
-		if (isset($_COOKIE["portal_admin"]) && isset($_COOKIE["portal_user"])) {
-			setcookie('portal_admin', 'logged_out', time() - 3600, '/', '', 0);
-			setcookie('portal_user', 'logged_out', time() - 3600, '/', '', 0);
+		if (isset($admin_cookie) && isset($user_cookie)) {
+			setcookie($admin_cookie_name, 'logged_out', time() - 3600, '/', '', 0);
+			setcookie($user_cookie_name, 'logged_out', time() - 3600, '/', '', 0);
 			return rest_ensure_response(['message' => 'cookies for both portal admin and portal user found.  both removed.']);
 		}
 		
-		if (isset($_COOKIE["portal_admin"])) {
-			setcookie('portal_admin', 'logged_out', time() - 3600, '/', '', 0);
+		if (isset($admin_cookie)) {
+			setcookie($admin_cookie_name, 'logged_out', time() - 3600, '/', '', 0);
 			return rest_ensure_response(['message' => 'portal admin logged out successfully.']);
 		}
 		
-		if (isset($_COOKIE["portal_user"])) {
-			setcookie('portal_user', 'logged_out', time() - 3600, '/', '', 0);
+		if (isset($user_cookie)) {
+			setcookie($user_cookie_name, 'logged_out', time() - 3600, '/', '', 0);
 			return rest_ensure_response(['message' => 'portal user logged out successfully.']);
 		}
 
@@ -333,7 +379,7 @@
     
 	global $wpdb;
 
-	$portal_table_name = $wpdb->prefix . "portal_users";
+	global $portal_table_name;
 	$charset_collate = $wpdb->get_charset_collate();
 
 	// Checks If Client Portal Users Database 'portal_users' Exists And Creates It If It Does Not Exist
@@ -549,8 +595,9 @@
 		// Define Wordpress Database Methods And Database Table
 		
 		global $wpdb;
-		$admin_table_name = $wpdb->prefix . "users";
-		$admins = $wpdb->get_results("SELECT * FROM ". $admin_table_name);
+		global $select_portal_admins;
+		global $admin_table_name;
+		$admins = $wpdb->get_results($select_portal_admins);
 		
 		// Check If Admin Table Is Empty.  Deny Access If Empty
 
@@ -646,9 +693,10 @@
 		global $wpdb;
 		
 		// Check For Admin Credentials
-		
-		$admin_table_name = $wpdb->prefix . "users";
-		$admins = $wpdb->get_results("SELECT * FROM ". $admin_table_name);
+
+		global $admin_table_name;
+		global $select_portal_admins;
+		$admins = $wpdb->get_results($select_portal_admins);
 
 		if ($admin_username && $admin_password) {
 			foreach($admins as $admin) {
@@ -676,8 +724,9 @@
 		
 		// If No Admin Credentials Found, Check User Credentials
 		
-		$portal_table_name = $wpdb->prefix . "portal_users";
-		$portal_users = $wpdb->get_results("SELECT * FROM ". $portal_table_name);
+		global $portal_table_name;
+		global $select_portal_users;
+		$portal_users = $wpdb->get_results($select_portal_users);
 
 		if ($user_email && $user_password) {
 			foreach($portal_users as $user) {
@@ -723,10 +772,12 @@
 		// Define Wordpress Database Methods And Database Table
 		
 		global $wpdb;
-		$portal_table_name = $wpdb->prefix . "portal_users";
-		$portal_users = $wpdb->get_results("SELECT * FROM ". $portal_table_name);
-		$admin_table_name = $wpdb->prefix . "users";
-		$admins = $wpdb->get_results("SELECT * FROM ". $admin_table_name);
+		global $portal_table_name;
+		global $select_portal_users;
+		global $select_portal_admins;
+		global $admin_table_name;
+		$portal_users = $wpdb->get_results($select_portal_users);
+		$admins = $wpdb->get_results($select_portal_admins);
 
 		// Get Admin ID. Varialbe Initialized
 
@@ -734,8 +785,10 @@
 
 		// Check For Cookie.  Otherwise Check For Email And Password In Body Parameters
 
+		global $admin_cookie;
+
 		if (verify_portal_cookie('admin')) {
-			$admin_id = strval(get_cookie_id($_COOKIE["portal_admin"]));
+			$admin_id = strval(get_cookie_id($admin_cookie));
 		} else {
 			foreach($admins as $admin) {
 
@@ -758,6 +811,10 @@
 					} else {
 						$admin_id = strval($admin->ID);
 
+						// Clear Cache
+
+						header('Clear-Site-Data: "cache"');
+
 						// Generate Cookie For Portal Admin
 
 						generate_portal_cookie($admin_id, true, $remember, $admin->user_registered);
@@ -775,10 +832,6 @@
 		// Check If Portal Table Is Empty
 
 		if ($portal_users === null || count($portal_users) === 0) {
-
-			// Clear Cache
-
-			header('Clear-Site-Data: "cache"');
 
 			return rest_ensure_response(['message' => 'portal admin logged in successfully. portal users table is currently empty.', 'data' => []]);
 		
@@ -855,11 +908,12 @@
 		// Define Wordpress Database Methods And Database Table
 		
 		global $wpdb;
-		$portal_table_name = $wpdb->prefix . "portal_users";
+		global $portal_table_name;
+		global $select_portal_users;
 		
 		// Check That There Is Not The Same Existing Email In Database By Retrieving Portal Table From Database
 		
-		$existing_portal_users = $wpdb->get_results("SELECT * FROM ". $portal_table_name);
+		$existing_portal_users = $wpdb->get_results($select_portal_users);
 		
 		// Loops Through Table.  If Same Email Already Exists In Database, Error Thrown
 		
@@ -902,8 +956,10 @@
 		));
 		
 		// Check That Field Was Actually Inserted Into Database As A New Table Row
+
+		global $select_portal_users;
 		
-		$updated_portal_users = $wpdb->get_results("SELECT * FROM ". $portal_table_name);
+		$updated_portal_users = $wpdb->get_results($select_portal_users);
 		
 		// Loops Through Table.  Checks That Row For Data Was Inserted
 		
@@ -931,7 +987,7 @@
 
 						// Check Database That 'sent_email' Column Was Updated Successfully
 
-						$updated2_portal_users = $wpdb->get_results("SELECT * FROM ". $portal_table_name);
+						$updated2_portal_users = $wpdb->get_results($select_portal_users);
 
 						foreach($updated2_portal_users as $usercheck2) { 
 							if ($usercheck->id === $usercheck2->id && strval($usercheck2->sent_email) === '1') {
@@ -995,7 +1051,9 @@
 		$is_admin = verify_portal_cookie('admin');
 		$is_user = verify_portal_cookie('user');
 
-		if (!$is_admin && $is_user && strval(get_cookie_id($_COOKIE["portal_user"])) !== strval($user_id)) {
+		global $user_cookie;
+
+		if (!$is_admin && $is_user && strval(get_cookie_id($user_cookie)) !== strval($user_id)) {
 			return new WP_Error('error updating user', 'portal user can only modify data corresponding to their account.', ['status' => 401]);
 		}
 		
@@ -1023,8 +1081,9 @@
 		// Define Wordpress Database Methods And Database Table
 		
 		global $wpdb;
-		$portal_table_name = $wpdb->prefix . "portal_users";
-		$portal_users = $wpdb->get_results("SELECT * FROM ". $portal_table_name);
+		global $portal_table_name;
+		global $select_portal_users;
+		$portal_users = $wpdb->get_results($select_portal_users);
 		
 		// Check If Portal Table Is Empty
 
@@ -1067,7 +1126,7 @@
 				}
 				if ($password) {
 					if (strlen($password) < 8) {
-						return new WP_Error('password length too short', 'password length must be at least 8 characters', ['status' => 400]);
+						return new WP_Error('not a secure password', 'password length must be at least 8 characters.', ['status' => 400]);
 					}
 
 					global $portal_password_salt;
@@ -1103,7 +1162,7 @@
 
 				// Check That Portal User Row Was Updated
 
-				$updated_portal_users = $wpdb->get_results("SELECT * FROM ". $portal_table_name);
+				$updated_portal_users = $wpdb->get_results($select_portal_users);
 
 				// Loops Through Table.  Checks That Row For Data Was Inserted
 
@@ -1152,15 +1211,18 @@
 		$is_admin = verify_portal_cookie('admin');
 		$is_user = verify_portal_cookie('user');
 
-		if (!$is_admin && $is_user && strval(get_cookie_id($_COOKIE["portal_user"])) !== strval($user_id)) {
+		global $user_cookie;
+
+		if (!$is_admin && $is_user && strval(get_cookie_id($user_cookie)) !== strval($user_id)) {
 			return new WP_Error('error updating user', 'portal user can only modify data corresponding to their account.', ['status' => 401]);
 		}
 		
 		// Define Wordpress Database Methods And Database Table
 		
 		global $wpdb;
-		$portal_table_name = $wpdb->prefix . "portal_users";
-		$portal_users = $wpdb->get_results("SELECT * FROM ". $portal_table_name);
+		global $portal_table_name;
+		global $select_portal_users;
+		$portal_users = $wpdb->get_results($select_portal_users);
 		
 		// Check If Portal Table Is Empty
 
@@ -1192,7 +1254,7 @@
 		
 		// Check That Portal User Row Was Deleted
 
-		$updated_portal_users = $wpdb->get_results("SELECT * FROM ". $portal_table_name);
+		$updated_portal_users = $wpdb->get_results($select_portal_users);
 
 		// Loops Through Table.  Checks That Row Was Deleted
 
@@ -1238,8 +1300,9 @@
 		// Define Wordpress Database Methods And Database Table
 		
 		global $wpdb;
-		$portal_table_name = $wpdb->prefix . "portal_users";
-		$portal_users = $wpdb->get_results("SELECT * FROM ". $portal_table_name);
+		global $portal_table_name;
+		global $select_portal_users;
+		$portal_users = $wpdb->get_results($select_portal_users);
 
 		// Check If Portal Table Is Empty
 
@@ -1253,8 +1316,10 @@
 
 		// Check For Cookie.  Otherwise Check For Email And Password In Body Parameters
 
+		global $user_cookie;
+
 		if (verify_portal_cookie('user')) {
-			$user_id = strval(get_cookie_id($_COOKIE["portal_user"]));
+			$user_id = strval(get_cookie_id($user_cookie));
 		} else {
 			foreach($portal_users as $usercheck) {
 				if (strtolower($usercheck->email) === strtolower($email)) {
@@ -1269,6 +1334,10 @@
 						return new WP_Error('password error', 'incorrect password entered', ['status' => 401]);
 					} else {
 						$user_id = strval($usercheck->id);
+
+						// Clear Cache
+
+						header('Clear-Site-Data: "cache"');
 
 						// Generate Cookie For Portal User.  If User Checked Remember Box, Then Cookie Set To Longer Expiration Time
 
@@ -1305,10 +1374,6 @@
 				),
 					array('id' => $user_id)
 				);
-
-				// Clear Cache
-
-				header('Clear-Site-Data: "cache"');
 
 				// Return API Response
 
@@ -1350,8 +1415,9 @@
 		// Define Wordpress Database Methods And Database Table
 		
 		global $wpdb;
-		$portal_table_name = $wpdb->prefix . "portal_users";
-		$portal_users = $wpdb->get_results("SELECT * FROM ". $portal_table_name);
+		global $portal_table_name;
+		global $select_portal_users;
+		$portal_users = $wpdb->get_results($select_portal_users);
 		
 		// Check If Portal Table Is Empty
 
@@ -1400,7 +1466,7 @@
 
 				// Check Database That 'sent_email' Column Was Updated Successful;y
 
-				$updated_portal_users = $wpdb->get_results("SELECT * FROM ". $portal_table_name);
+				$updated_portal_users = $wpdb->get_results($select_portal_users);
 
 				foreach($updated_portal_users as $usercheck) { 
 					if ($user->id === $usercheck->id && strval($usercheck->sent_email) === '1') {
@@ -1445,8 +1511,9 @@
 		// Define Wordpress Database Methods And Database Table
 		
 		global $wpdb;
-		$portal_table_name = $wpdb->prefix . "portal_users";
-		$portal_users = $wpdb->get_results("SELECT * FROM ". $portal_table_name);
+		global $portal_table_name;
+		global $select_portal_users;
+		$portal_users = $wpdb->get_results($select_portal_users);
 		
 		// Check If Portal Table Is Empty
 
@@ -1478,7 +1545,7 @@
 					array('id' => $user_id)
 				);
 
-				$updated_portal_users = $wpdb->get_results("SELECT * FROM ". $portal_table_name);
+				$updated_portal_users = $wpdb->get_results($select_portal_users);
 
 				// Loops Through Table.  Checks That Row For Data Was Inserted.  Otherwise Error Thrown After Iterating Through Loop
 
@@ -1502,7 +1569,7 @@
 
 							// Check Database That 'sent_email' Column Was Updated Successfully
 
-							$updated2_portal_users = $wpdb->get_results("SELECT * FROM ". $portal_table_name);
+							$updated2_portal_users = $wpdb->get_results($select_portal_users);
 
 							foreach($updated2_portal_users as $usercheck2) { 
 								if ($usercheck->id === $usercheck2->id && strval($usercheck2->sent_email) === '1') {
@@ -1548,8 +1615,9 @@
 		// Define Wordpress Database Methods And Database Table
 		
 		global $wpdb;
-		$portal_table_name = $wpdb->prefix . "portal_users";
-		$portal_users = $wpdb->get_results("SELECT * FROM ". $portal_table_name);
+		global $portal_table_name;
+		global $select_portal_users;
+		$portal_users = $wpdb->get_results($select_portal_users);
 		
 		// Check If Portal Table Is Empty
 
@@ -1573,7 +1641,7 @@
 
 				// Check Database That 'sent_email' Column Was Updated Successful
 
-				$updated2_portal_users = $wpdb->get_results("SELECT * FROM ". $portal_table_name);
+				$updated2_portal_users = $wpdb->get_results($select_portal_users);
 
 				foreach($updated2_portal_users as $usercheck) { 
 					if ($user->id === $usercheck->id && strval($usercheck->sent_email) === '1') {
