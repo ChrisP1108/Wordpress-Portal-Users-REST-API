@@ -398,7 +398,7 @@
 				break;
 			case 'deleted':
 				$subject_message = 'Magellan Portal User Deleted';
-                $heading = "Good luck to you.";
+                $heading = "Thank you for exploring the portal.";
                 $type_message = "We're glad you had the opportunity to explore the Magellan Portal.  Best of luck to you.";
 				break;
 		}
@@ -942,7 +942,19 @@
 								
 								// API Response Upon Success
 
-								return rest_ensure_response(['message' => 'portal user created successfully', 'data' => ['id' => $usercheck->id, 'password' => $random_password, 'sent_email' => $usercheck2->sent_email]]);
+								return rest_ensure_response(['message' => 'portal user created successfully', 'data' => [
+									'id' => htmlspecialchars($usercheck2->id),
+									'first_name' => htmlspecialchars($usercheck2->first_name),
+									'last_name' => htmlspecialchars($usercheck2->last_name),
+									'company' => htmlspecialchars($usercheck2->company),
+									'email' => htmlspecialchars($usercheck2->email),
+									'updated_password' => htmlspecialchars($usercheck2->updated_password),
+									'sent_email' => htmlspecialchars($usercheck2->sent_email),
+									'times_logged_in' => htmlspecialchars($usercheck2->times_logged_in),
+									'last_login' => htmlspecialchars($usercheck2->last_login),
+									'created' => htmlspecialchars($usercheck2->created),
+									'updated' => htmlspecialchars($usercheck2->updated)
+								]]);
 							}
 						}
 
