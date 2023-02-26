@@ -285,14 +285,6 @@
 	// Removes Admin/User Portal Cookies 
 
 	function remove_portal_cookie() {
-
-		// Clear Browser Data
-
-		header('Clear-Site-Data: "cache"');
-
-		// Clear Cache Wordpress
-
-		wp_cache_flush();
 		
 		// Remove Cookie Based On If User Has Admin Or Portal User Cookie To Logout
 		
@@ -311,6 +303,14 @@
 			setcookie('portal_user', 'logged_out', time() - 3600, '/', '', 0);
 			return rest_ensure_response(['message' => 'portal user logged out successfully.']);
 		}
+
+		// Clear Cache Wordpress
+
+		wp_cache_flush();
+
+		// Clear Browser Data
+
+		header('Clear-Site-Data: "cache"');
 		
 		// If No Admin Or Portal User Cookies Found, Throw Error
 		
