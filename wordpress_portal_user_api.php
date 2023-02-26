@@ -1,4 +1,53 @@
 <?php
+
+// PORTAL API GLOBAL ENVIRONMENT VARIABLES
+
+	// Restricted Portal Pages URL Slugs
+
+	global $restricted_pages;
+	$restricted_pages = [
+		'forge-resource-center-additional-links',
+		'forge-resource-center-green-screen',
+		'forge-resource-center-home',
+		'forge-resource-center-live-events',
+		'forge-resource-center-monthly-marketing',
+		'forge-resource-center-radio',
+		'forge-resource-center-television'
+	];
+
+	// Portal User Login Page URL
+
+	global $portal_login_url;
+	$portal_login_url = 'https://www.partnerwithmagellan.com/portal-user-login/';
+
+	// Portal Homepage URL For Logged In Users
+
+	global $portal_home_url;
+	$portal_home_url = 'https://www.partnerwithmagellan.com/forge-resource-center-home/';
+
+	// Portal Cookie Expiration Time In Days
+
+	global $cookie_days_remember;
+	$cookie_days_remember = 7;
+
+	global $cookie_not_remembered;
+	$cookie_not_remembered = 1;
+
+	// Portal User Cookie Key
+
+	global $portal_user_key;
+	$portal_user_key = '4&c!0)b2x$-~["h3Nz|*qX?$_;6^`UO}.t!';
+
+	// Portal Admin Cookie Key
+
+	global $portal_admin_key;
+	$portal_admin_key = '-@8X-11-%^Z-B@Z*-6125-V&tZ-2185-+cz@-4';
+
+	// Portal User Password Salt 
+	
+	global $portal_password_salt;
+	$portal_password_salt = '0!dB%z_@Ga,IxQ8#s=P{@?~|fX$*v2V]oF&x';
+
 // PAGE ACCESS RESTRICTIONS
 
 	// Allows Access To Portal Pages Only If Portal User Or Portal Admin Cookie Present. If Not, Redirected To Portal User Login
@@ -7,19 +56,11 @@
 
 		// Portal Page URL Slugs That Will Be Restricted To Portal Users And Portal Admins Only
 
-		$restricted_pages = [
-			'forge-resource-center-additional-links',
-			'forge-resource-center-green-screen',
-			'forge-resource-center-home',
-			'forge-resource-center-live-events',
-			'forge-resource-center-monthly-marketing',
-			'forge-resource-center-radio',
-			'forge-resource-center-television'
-		];
+		global $restricted_pages;
 
 		// Portal User Login Page URL
 
-		$portal_login_url = 'https://www.partnerwithmagellan.com/portal-user-login/';
+		global $portal_login_url;
 		
 		foreach($restricted_pages as $page) {
 			if (is_page($page)) {
@@ -34,7 +75,7 @@
 		
 		// Portal User Logged In Homepage URL
 
-		$portal_home_url = 'https://www.partnerwithmagellan.com/forge-resource-center-home/';
+		global $portal_home_url;
 
 		if (is_page('portal-user-login')) {
 			if (verify_portal_cookie('admin') || verify_portal_cookie('user')) {
@@ -50,60 +91,38 @@
 
 	// Generate Portal Admin/User Cookie
 
-	function generate_portal_cookie($id, $is_admin, $remember) {
+	function generate_portal_cookie($id, $is_admin, $remember, $created) {
 
-		$id_multiplied = strval(intval($id) * 237);
+		$days_to_cookie_expiration_calc = time(); 
 
-		// Salt Concatenation Before Scrambling
+		// Number Of Days Until Cookie Expires Date Encoding
 
-		$id_salted = strval(rand(1000, 9999)) . $id_multiplied . strval(rand(1000, 9999));
+		global $cookie_days_remember;
 
-		// Cookie Scrambling Algorithm
+		global $cookie_not_remembered;
 
-		$id_split = str_split($id_salted);
-		$id_scrambled = '';
-		foreach($id_split as $int) {
-			switch ($int) {
-				case "0":
-					$id_scrambled .= "$";
-					break;	
-				case "1":
-					$id_scrambled .= "e";
-					break;	
-				case "2":
-					$id_scrambled .= "*";
-					break;
-				case "3":
-					$id_scrambled .= "7";
-					break;	
-				case "4":
-					$id_scrambled .= "W";
-					break;
-				case "5":
-					$id_scrambled .= "1";
-					break;
-				case "6":
-					$id_scrambled .= "?";
-					break;
-				case "7":
-					$id_scrambled .= "p";
-					break;
-				case "8":
-					$id_scrambled .= "Z";
-					break;
-				case "9":
-					$id_scrambled .= "3";
-					break;
-			}
+		if ($remember) {
+			$days_till_calc = $cookie_days_remember * 86400;
+			$days_to_cookie_expiration_calc = time() + $days_till_calc;
+		} else {
+			$days_till_calc = $cookie_not_remembered * 86400;
+			$days_to_cookie_expiration_calc = time() + $days_till_calc;
 		}
 
-		// Number Of Days Until Cookie Expires If User Wants To Remain Logged In.  If Not Remember, Cookie Expires After 1 Day.  This Determines How Long A User Will Stay Logged In For
+		// Cookie Keys For Security
 
-		$cookie_days_remember = 7;
+		global $portal_user_key;
+		global $portal_admin_key;
 
-		$cookie_not_remembered = 1;
+		$encoded = base64_encode(json_encode([
+			'id' => $id,
+			'created' => wp_hash_password(strval($created)),
+			'expiration' => $days_to_cookie_expiration_calc,
+			'type' => $is_admin ? 'admin' : 'user',
+			'key' => $is_admin ? wp_hash_password($portal_admin_key) : wp_hash_password($portal_user_key)
+		]));
 
-		// Sets Cookie Days Till Expiration Until Depending If User Click On Remember
+		// Sets Cookie Days Till Expiration Until Depending If User Clicked On Remember
 
 		$cookie_days = $cookie_not_remembered;
 
@@ -111,78 +130,33 @@
 			$cookie_days = $cookie_days_remember;
 		} 
 
-		// Sets Cookie Based On If User Is Admin Or Portal User
-
 		if ($is_admin) {
-			$added_admin_salt = '^' . $id_scrambled . '{';
-			setcookie('portal_admin', $added_admin_salt, time() + ( $cookie_days * DAY_IN_SECONDS ), '/', '', 0, true);
+			setcookie('portal_admin', $encoded, time() + ( $cookie_days * DAY_IN_SECONDS ), '/', '', 1, true);
 		} else {
-			setcookie('portal_user', $id_scrambled, time() + ( $cookie_days * DAY_IN_SECONDS ), '/', '', 0, true);
+			setcookie('portal_user', $encoded, time() + ( $cookie_days * DAY_IN_SECONDS ), '/', '', 1, true);
 		}
-
-		// Set Security Cookie For Extra Security
-
-		$portal_secret_key = '4&c!0)b2x$-~[<h3Nz|';
-
-		setcookie('portal_key', wp_hash_password($portal_secret_key), time() + ( $cookie_days * DAY_IN_SECONDS ), '/', '', 0, true);
 	}
 
-	// Unscramble Portal Cookie And Returns Admin/User ID
+	// Get Cookie ID
 
-	function unscramble_portal_cookie($scrambled_cookie) {
+	function get_cookie_id($encoded_cookie) {
 
-		// Remove Portal Admin Additional Character Concatenation If Cookie Is Admin
+		// Decode Cookie Values 
 
-		if (str_contains($scrambled_cookie, '^') && str_contains($scrambled_cookie, '{')) {
-			$scrambled_cookie = substr($scrambled_cookie, 1, -1);
-		}
+		$decoded_cookie = json_decode(base64_decode($encoded_cookie), true);
 
-		// Salt Removal
+		// Return Cookie Id
 
-		$scrambled_cookie = substr($scrambled_cookie, 4, -4);
+		return $decoded_cookie['id'] ?? 'no user id';
+	}
 
-		// Cookie Unscrambling Algorithm
+	function cookie_decoder($encoded_cookie) {
 
-		$split_scrambled_cookie = str_split($scrambled_cookie);
+		// Decode Cookie Values 
 
-		$id_unscrambled = '';
+		$decoded_cookie = json_decode(base64_decode($encoded_cookie, true));
 
-		foreach($split_scrambled_cookie as $int) {
-			switch ($int) {
-				case "$":
-					$id_unscrambled .= "0";
-					break;	
-				case "e":
-					$id_unscrambled .= "1";
-					break;	
-				case "*":
-					$id_unscrambled .= "2";
-					break;
-				case "7":
-					$id_unscrambled .= "3";
-					break;	
-				case "W":
-					$id_unscrambled .= "4";
-					break;
-				case "1":
-					$id_unscrambled .= "5";
-					break;
-				case "?":
-					$id_unscrambled .= "6";
-					break;
-				case "p":
-					$id_unscrambled .= "7";
-					break;
-				case "Z":
-					$id_unscrambled .= "8";
-					break;
-				case "3":
-					$id_unscrambled .= "9";
-					break;
-			}
-		}
-		
-		return strval(intval($id_unscrambled) / 237);	
+		return $decoded_cookie;
 	}
 
 	// Check If Admin/User Portal Cookie Found Corresponds To An Admin/User In Database
@@ -190,18 +164,6 @@
     function verify_portal_cookie($type) {
 
 		global $wpdb;
-
-		// Set Security Cookie For Extra Security
-
-		$portal_secret_key = '4&c!0)b2x$-~[<h3Nz|';
-
-		// Check That Security Cookie Is Present And Valid
-
-		if (isset($_COOKIE["portal_key"])) {
-			if (!wp_check_password($portal_secret_key, ($_COOKIE["portal_key"]))) {
-				return false;
-			}
-		} else return false;
 		
 		// Check For Admin Cookie And See If Id In Cookie Corresponds To An Admin
 		
@@ -209,15 +171,52 @@
 			$admin_table_name = $wpdb->prefix . "users";
 			$admins = $wpdb->get_results("SELECT * FROM ". $admin_table_name);
 
-			$admin_cookie_id = unscramble_portal_cookie($_COOKIE["portal_admin"]);
-		
-			foreach($admins as $admin) {
-				if (strval($admin->ID) === strval($admin_cookie_id)) {
-					return true;
+			$admin_cookie_id = get_cookie_id($_COOKIE["portal_admin"]);
+
+			if ($admin_cookie_id) {
+				foreach($admins as $admin) {
+					if (strval($admin->ID) === strval($admin_cookie_id)) {
+
+						// Decode Portal Admin Cookie
+
+						$admin_cookie_decoded = cookie_decoder($_COOKIE["portal_admin"]);
+
+						// Check That Creation Date Matches
+
+						if (!wp_check_password($admin->user_registered, $admin_cookie_decoded->created)) {
+							return false;
+						}
+
+						// Check That Cookie Has Not Gone Past Expiration Date
+
+						if (intval($admin_cookie_decoded->expiration) < time()) {
+							return false;
+						}
+
+						// Check That Type Is Admin
+
+						if (strval($admin_cookie_decoded->type) !== 'admin') {
+							return false;
+						}
+
+						global $portal_admin_key;
+
+						// Check Portal Admin Key
+
+						if (!wp_check_password($portal_admin_key, $admin_cookie_decoded->key)) {
+							return false;
+						}
+
+						// If All Cookie Fields Passed, Return True
+
+						return true;
+					}
 				}
 			}
 
-			// If Cookie Doesn't Correspond To An Admin User, Return False To Reject
+			// If Cookie Doesn't Correspond To An Admin User, Remove Invalid Cookie And Return False To Reject
+
+			remove_portal_cookie();
 
 			return false;
 		}
@@ -228,20 +227,57 @@
 			$portal_table_name = $wpdb->prefix . "portal_users";
 			$portal_users = $wpdb->get_results("SELECT * FROM ". $portal_table_name);
 
-			$user_cookie_id = unscramble_portal_cookie($_COOKIE["portal_user"]);
+			$user_cookie_id = get_cookie_id($_COOKIE["portal_user"]);
 
-			foreach($portal_users as $user) {
-				if (strval($user->id) === strval($user_cookie_id)) {
-					return true;
+			if ($user_cookie_id) {
+				foreach($portal_users as $user) {
+					if (strval($user->id) === strval($user_cookie_id)) {
+
+						// Decode Portal User Cookie
+
+						$user_cookie_decoded = cookie_decoder($_COOKIE["portal_user"]);
+
+						// Check That Creation Date Matches
+
+						if (!wp_check_password(strval($user->created), $user_cookie_decoded->created)) {
+							return false;
+						}
+
+						// Check That Cookie Has Not Gone Past Expiration Date
+
+						if (intval($user_cookie_decoded->expiration) < time()) {
+							return false;
+						}
+
+						// Check That Type Is Admin
+
+						if (strval($user_cookie_decoded->type) !== 'user') {
+							return false;
+						}
+
+						global $portal_user_key;
+
+						// Check Portal Admin Key
+
+						if (!wp_check_password($portal_user_key, $user_cookie_decoded->key)) {
+							return false;
+						}
+
+						// If All Cookie Fields Passed, Return True
+						
+						return true;
+					}
 				}
 			}
 
 			// If Cookie Doesn't Correspond To A Portal User, Return False To Reject
 
+			remove_portal_cookie();
+
 			return false;
 		}
 		
-		// Return False To Reject If No Valid Cookies Present
+		// Return False To Reject If No Valid Cookies Present And Remove Invalid Cookie
 		
 		return false;
 	}
@@ -249,10 +285,6 @@
 	// Removes Admin/User Portal Cookies 
 
 	function remove_portal_cookie() {
-
-		// Remove Portal Secret Key
-
-		setcookie('portal_key', 'logged_out', time() - 3600, '/', '', 0);
 
 		// Clear Browser Data
 
@@ -283,6 +315,16 @@
 		// If No Admin Or Portal User Cookies Found, Throw Error
 		
 		return new WP_Error('no portal cookies found', 'unable to perform logout as no portal admin or user cookie found', ['status' => 400]);
+	}
+
+// PASSWORD ENCODE
+
+	// Pre-Encode Portal User Password.  Password Storage Value Before Hashing
+
+	function encode_password($password, $created) {
+		global $portal_password_salt;
+
+		return $password . base64_encode(strval($created)) . $portal_password_salt;
 	}
 
 // DATABASE INIT
@@ -352,7 +394,7 @@
 			case 'regenerate':
 				$subject_message = 'Magellan Portal User Password Reset By Admin';
                 $heading = "Hello from the administrator.";
-				$type_message = 'The Magellan Portal Administrator has reset your password. Please see your temporary password below and click the button to regain access to the Magellan Portal.';
+				$type_message = 'The Magellan Portal Administrator has reset your password. Please see your temporary password below and click the button to regain access.';
 				break;
 			case 'deleted':
 				$subject_message = 'Magellan Portal User Deleted';
@@ -693,7 +735,7 @@
 		// Check For Cookie.  Otherwise Check For Email And Password In Body Parameters
 
 		if (verify_portal_cookie('admin')) {
-			$admin_id = strval(unscramble_portal_cookie($_COOKIE["portal_admin"]));
+			$admin_id = strval(get_cookie_id($_COOKIE["portal_admin"]));
 		} else {
 			foreach($admins as $admin) {
 
@@ -718,7 +760,7 @@
 
 						// Generate Cookie For Portal Admin
 
-						generate_portal_cookie($admin_id, true, $remember);
+						generate_portal_cookie($admin_id, true, $remember, $admin->user_registered);
 					}
 				}
 			}
@@ -833,13 +875,17 @@
 		
 		$random_password = wp_generate_password();
 		
-		// Password Hashing
-		
-		$hashed_password = wp_hash_password($random_password);
-		
+		// Password Hashing.  Portal User Creation Date And Portal Password Salt Added After Random Password
+
 		// Created At Time
 		
 		$created = current_time('mysql', false);
+
+		global $portal_password_salt;
+
+		$pre_hash_password_encode = encode_password($random_password, $created);
+		
+		$hashed_password = wp_hash_password($pre_hash_password_encode);
 		
 		// Insert Fields Into Database Table
 
@@ -867,7 +913,7 @@
 					
 					// Checks Password.  If No Match, Throw Error
 					
-					if (wp_check_password($random_password, $usercheck->password)) {
+					if (wp_check_password($pre_hash_password_encode, $usercheck->password)) {
 
 						// Send Email To Portal User.  If Email Fails, Throw Error
 
@@ -937,7 +983,7 @@
 		$is_admin = verify_portal_cookie('admin');
 		$is_user = verify_portal_cookie('user');
 
-		if (!$is_admin && $is_user && strval(unscramble_portal_cookie($_COOKIE["portal_user"])) !== strval($user_id)) {
+		if (!$is_admin && $is_user && strval(get_cookie_id($_COOKIE["portal_user"])) !== strval($user_id)) {
 			return new WP_Error('error updating user', 'portal user can only modify data corresponding to their account.', ['status' => 401]);
 		}
 		
@@ -1011,7 +1057,10 @@
 					if (strlen($password) < 8) {
 						return new WP_Error('password length too short', 'password length must be at least 8 characters', ['status' => 400]);
 					}
-					$hashed_password = wp_hash_password($password);
+
+					global $portal_password_salt;
+
+					$hashed_password = wp_hash_password(encode_password($password, $user->created));
 				}
 				if (!$password) {
 					$hashed_password = $user->password;
@@ -1051,7 +1100,7 @@
 						
 						// Check Hashed Password In Row If Password Field Was Passed In To Update
 	
-						if ($password && !wp_check_password($password, $usercheck->password)) {
+						if ($password && !wp_check_password(encode_password($password, $usercheck->created), $usercheck->password)) {
 							return new WP_Error('error updating password', 'portal user password did not update correctly.  try regenerating a new temporary password.', ['status' => 500]);
 						}
 
@@ -1091,7 +1140,7 @@
 		$is_admin = verify_portal_cookie('admin');
 		$is_user = verify_portal_cookie('user');
 
-		if (!$is_admin && $is_user && strval(unscramble_portal_cookie($_COOKIE["portal_user"])) !== strval($user_id)) {
+		if (!$is_admin && $is_user && strval(get_cookie_id($_COOKIE["portal_user"])) !== strval($user_id)) {
 			return new WP_Error('error updating user', 'portal user can only modify data corresponding to their account.', ['status' => 401]);
 		}
 		
@@ -1193,14 +1242,16 @@
 		// Check For Cookie.  Otherwise Check For Email And Password In Body Parameters
 
 		if (verify_portal_cookie('user')) {
-			$user_id = strval(unscramble_portal_cookie($_COOKIE["portal_user"]));
+			$user_id = strval(get_cookie_id($_COOKIE["portal_user"]));
 		} else {
 			foreach($portal_users as $usercheck) {
 				if (strtolower($usercheck->email) === strtolower($email)) {
 
+					global $portal_password_salt;
+
 					// Check That Passwords Match
 
-					$password_valid = wp_check_password($password, $usercheck->password);
+					$password_valid = wp_check_password(encode_password($password, $usercheck->created), $usercheck->password);
 
 					if (!$password_valid) {
 						return new WP_Error('password error', 'incorrect password entered', ['status' => 401]);
@@ -1209,7 +1260,7 @@
 
 						// Generate Cookie For Portal User.  If User Checked Remember Box, Then Cookie Set To Longer Expiration Time
 
-						generate_portal_cookie($user_id, false, $remember);
+						generate_portal_cookie($user_id, false, $remember, $usercheck->created);
 					}
 				}
 			}
@@ -1304,9 +1355,11 @@
 				
 				$random_password = wp_generate_password();
 
-                // Hash Temporary Password To Store In User Table Row
+				// Password Hashing.  Portal User Creation Date And Portal Password Salt Added After Random Password
 
- 				$hashed_password = wp_hash_password($random_password);
+				global $portal_password_salt;
+		
+				$hashed_password = wp_hash_password(encode_password($random_password, $user->created));
 
  				// Update User Table Row With Temporary Password
 
@@ -1398,12 +1451,14 @@
 		
 				$random_password = wp_generate_password();
 
-				// Update Portal User Row
+				// Password Hashing.  Portal User Creation Date And Portal Password Salt Added After Random Password
+		
+				$hashed_password = wp_hash_password(encode_password($random_password, $user->created));
 
 				$updated_at = current_time('mysql', false);
 
 				$wpdb->update($portal_table_name, array(
-					'password' => wp_hash_password($random_password),
+					'password' => $hashed_password,
 					'sent_email' => 0,
 					'updated' => $updated_at,
 					'updated_password' => 0
@@ -1417,7 +1472,7 @@
 
 				foreach($updated_portal_users as $usercheck) {
 					if (strtolower($usercheck->id) === strtolower($user_id)) {
-						if (wp_check_password($random_password, $usercheck->password)) {
+						if (wp_check_password(encode_password($random_password, $usercheck->created), $usercheck->password)) {
 
 							// Send Email To Portal User.  If Email Fails, Throw Error
 
