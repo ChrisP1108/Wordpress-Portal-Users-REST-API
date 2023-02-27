@@ -1,5 +1,4 @@
 <?php
-
 // PORTAL API GLOBAL ENVIRONMENT VARIABLES
 
 	// Restricted Portal Pages URL Slugs
@@ -98,6 +97,7 @@
 		foreach($restricted_pages as $page) {
 			if (is_page($page)) {
 				if (!verify_portal_cookie('admin') && !verify_portal_cookie('user') && !is_user_logged_in()) {
+					remove_portal_cookie();
 					wp_redirect($portal_login_url); 
 					exit();
 				}
@@ -257,10 +257,11 @@
 		// Check For Portal User Cookie
 
 			global $user_cookie;
-		
-		if ($type === 'user' && isset($user_cookie)) {
 			global $portal_table_name;
 			global $select_portal_users;
+		
+		if ($type === 'user' && isset($user_cookie)) {
+			
 			$portal_users = $wpdb->get_results($select_portal_users);
 
 			$user_cookie_id = get_cookie_id($user_cookie);
@@ -273,19 +274,13 @@
 
 						$user_cookie_decoded = cookie_decoder($user_cookie);
 
-						// Check That Creation Date Matches
-
-						if (!wp_check_password(strval($user->created), $user_cookie_decoded->created)) {
-							return false;
-						}
-
 						// Check That Cookie Has Not Gone Past Expiration Date
 
 						if (intval($user_cookie_decoded->expiration) < time()) {
 							return false;
 						}
 
-						// Check That Type Is Admin
+						// Check That Type Is User
 
 						if (strval($user_cookie_decoded->type) !== 'user') {
 							return false;
