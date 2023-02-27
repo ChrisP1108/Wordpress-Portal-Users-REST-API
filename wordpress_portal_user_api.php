@@ -1,4 +1,5 @@
 <?php
+
 // PORTAL API GLOBAL ENVIRONMENT VARIABLES
 
 	// Restricted Portal Pages URL Slugs
@@ -117,6 +118,9 @@
 					exit();
 				}
 			}
+			// Clear Browser Data
+
+			header('Clear-Site-Data: "cache"');
 		}
 	});
 
@@ -1325,10 +1329,6 @@
 						return new WP_Error('password error', 'incorrect password entered', ['status' => 401]);
 					} else {
 						$user_id = strval($usercheck->id);
-
-						// Clear Cache
-
-						header('Clear-Site-Data: "cache"');
 
 						// Generate Cookie For Portal User.  If User Checked Remember Box, Then Cookie Set To Longer Expiration Time
 
