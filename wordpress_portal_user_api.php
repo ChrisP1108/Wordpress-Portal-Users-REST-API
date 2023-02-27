@@ -147,12 +147,14 @@
 		global $portal_user_key;
 		global $portal_admin_key;
 
+		// Signature Is Encoded With Created Date, Key, And Expiration Concatenated Together Before Hashing
+
 		$encoded = base64_encode(json_encode([
 			'id' => $id,
-			'created' => wp_hash_password(strval($created)),
 			'expiration' => $days_to_cookie_expiration_calc,
 			'type' => $is_admin ? 'admin' : 'user',
-			'key' => $is_admin ? wp_hash_password($portal_admin_key) : wp_hash_password($portal_user_key)
+			'signature' => $is_admin ? wp_hash_password(strval($created) . $portal_admin_key . strval($days_to_cookie_expiration_calc)) 
+				: wp_hash_password(strval($created) . $portal_user_key . strval($days_to_cookie_expiration_calc))
 		]));
 
 		// Sets Cookie Days Till Expiration Until Depending If User Clicked On Remember
@@ -218,12 +220,6 @@
 
 						$admin_cookie_decoded = cookie_decoder($admin_cookie);
 
-						// Check That Creation Date Matches
-
-						if (!wp_check_password($admin->user_registered, $admin_cookie_decoded->created)) {
-							return false;
-						}
-
 						// Check That Cookie Has Not Gone Past Expiration Date
 
 						if (intval($admin_cookie_decoded->expiration) < time()) {
@@ -238,9 +234,9 @@
 
 						global $portal_admin_key;
 
-						// Check Portal Admin Key
+						// Check Portal Admin Key.  Signature Was Encoded With Created Date, Key, And Expiration Concatenated Together Before Hashing
 
-						if (!wp_check_password($portal_admin_key, $admin_cookie_decoded->key)) {
+						if (!wp_check_password(strval($admin->user_registered) . $portal_admin_key . strval($admin_cookie_decoded->expiration), $admin_cookie_decoded->signature)) {
 							return false;
 						}
 
@@ -297,9 +293,9 @@
 
 						global $portal_user_key;
 
-						// Check Portal Admin Key
+						// Check Portal User Key.  Signature Was Encoded With Created Date, Key, And Expiration Concatenated Together Before Hashing
 
-						if (!wp_check_password($portal_user_key, $user_cookie_decoded->key)) {
+						if (!wp_check_password(strval($user->created) . $portal_user_key . strval($user_cookie_decoded->expiration), $user_cookie_decoded->signature)) {
 							return false;
 						}
 
