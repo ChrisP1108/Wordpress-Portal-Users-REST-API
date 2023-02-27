@@ -153,8 +153,8 @@
 			'id' => $id,
 			'expiration' => $days_to_cookie_expiration_calc,
 			'type' => $is_admin ? 'admin' : 'user',
-			'signature' => $is_admin ? wp_hash_password(strval($created) . $portal_admin_key . strval($days_to_cookie_expiration_calc)) 
-				: wp_hash_password(strval($created) . $portal_user_key . strval($days_to_cookie_expiration_calc))
+			'signature' => $is_admin ? wp_hash_password(base64_encode(strval($created)) . $portal_admin_key . base64_encode(strval($days_to_cookie_expiration_calc))) 
+				: wp_hash_password(base64_encode(strval($created)) . $portal_user_key . base64_encode(strval($days_to_cookie_expiration_calc)))
 		]));
 
 		// Sets Cookie Days Till Expiration Until Depending If User Clicked On Remember
@@ -236,7 +236,7 @@
 
 						// Check Portal Admin Key.  Signature Was Encoded With Created Date, Key, And Expiration Concatenated Together Before Hashing
 
-						if (!wp_check_password(strval($admin->user_registered) . $portal_admin_key . strval($admin_cookie_decoded->expiration), $admin_cookie_decoded->signature)) {
+						if (!wp_check_password(base64_encode(strval($admin->user_registered)) . $portal_admin_key . base64_encode(strval($admin_cookie_decoded->expiration)), $admin_cookie_decoded->signature)) {
 							return false;
 						}
 
@@ -295,7 +295,7 @@
 
 						// Check Portal User Key.  Signature Was Encoded With Created Date, Key, And Expiration Concatenated Together Before Hashing
 
-						if (!wp_check_password(strval($user->created) . $portal_user_key . strval($user_cookie_decoded->expiration), $user_cookie_decoded->signature)) {
+						if (!wp_check_password(base64_encode(strval($user->created)) . $portal_user_key . base64_encode(strval($user_cookie_decoded->expiration)), $user_cookie_decoded->signature)) {
 							return false;
 						}
 
