@@ -52,6 +52,17 @@
 
 	global $portal_login_url;
 	$portal_login_url = 'https://www.partnerwithmagellan.com/portal-user-login/';
+	global $portal_login_slug;
+	$portal_login_slug = 'portal-user-login';
+
+	// Portal User Update Password URL slug
+
+	global $portal_update_password_slug;
+	$portal_update_password_slug = 'portal-user-update-password';
+
+	// Portal Admin Dashboard URL Slug
+	global $portal_admin_url_slug;
+	$portal_admin_url_slug = 'portal-admin-dashboard';
 
 	// Portal Homepage URL For Logged In Users
 
@@ -80,6 +91,16 @@
 	
 	global $portal_password_salt;
 	$portal_password_salt = '0!dB%z_@Ga,IxQ8#s=P{@?~|fX$*v2V]oF&x';
+
+// CACHE CLEARING OF PORTAL USER LOGIN AND ADMIN PAGES
+
+	// Clear Browser Cache When Portal User Or Admin Pages Loaded
+
+	if (is_page($portal_login_slug) || is_page($portal_admin_url_slug)) {
+		header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+		header("Cache-Control: post-check=0, pre-check=0", false);
+		header("Pragma: no-cache");		
+	}
 
 // PAGE ACCESS RESTRICTIONS
 
@@ -110,17 +131,16 @@
 		// Portal User Logged In Homepage URL
 
 		global $portal_home_url;
+		global $portal_login_slug;
+		global $portal_update_password_slug;
 
-		if (is_page('portal-user-login')) {
+		if (is_page($portal_login_slug) || is_page($portal_update_password_slug)) {
 			if (verify_portal_cookie('admin') || verify_portal_cookie('user')) {
 				if (!isset($_COOKIE["wordpress_test_cookie"])) {
 					wp_redirect($portal_home_url); 
 					exit();
 				}
 			}
-			// Clear Browser Data
-
-			header('Clear-Site-Data: "cache"');
 		}
 	});
 
@@ -326,6 +346,12 @@
 
 		global $admin_cookie;
 		global $user_cookie;
+
+		// Clear Browser Cache
+
+		header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+		header("Cache-Control: post-check=0, pre-check=0", false);
+		header("Pragma: no-cache");		
 		
 		// Remove Cookie Based On If User Has Admin Or Portal User Cookie To Logout
 		
@@ -348,10 +374,6 @@
 		// Clear Cache Wordpress
 
 		wp_cache_flush();
-
-		// Clear Browser Data
-
-		header('Clear-Site-Data: "cache"');
 		
 		// If No Admin Or Portal User Cookies Found, Throw Error
 		
@@ -806,10 +828,6 @@
 					} else {
 						$admin_id = strval($admin->ID);
 
-						// Clear Cache
-
-						header('Clear-Site-Data: "cache"');
-
 						// Generate Cookie For Portal Admin
 
 						generate_portal_cookie($admin_id, true, $remember, $admin->user_registered);
@@ -853,12 +871,12 @@
 				
 				array_push($sanitized_data, $sanitized_row);
 			}
+
+			header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+			header("Cache-Control: post-check=0, pre-check=0", false);
+			header("Pragma: no-cache");		
 			
 			// Return Portal Users If Found In Table
-
-			// Clear Cache
-
-			header('Clear-Site-Data: "cache"');
 
 			return rest_ensure_response(['message' => 'portal admin logged in successfully. portal users data retrieved successfully.', 'data' => $sanitized_data]);
 		
@@ -986,10 +1004,6 @@
 
 						foreach($updated2_portal_users as $usercheck2) { 
 							if ($usercheck->id === $usercheck2->id && strval($usercheck2->sent_email) === '1') {
-
-								// Clear Cache
-
-								header('Clear-Site-Data: "cache"');
 								
 								// API Response Upon Success
 
@@ -1008,10 +1022,6 @@
 								]]);
 							}
 						}
-
-						// Clear Cache
-
-						header('Clear-Site-Data: "cache"');
 
 						// If Error In Updating 'sent_email' Column, Throw Error
 						
@@ -1170,10 +1180,6 @@
 							return new WP_Error('error updating password', 'portal user password did not update correctly.  try regenerating a new temporary password.', ['status' => 500]);
 						}
 
-						// Clear Cache
-
-						header('Clear-Site-Data: "cache"');
-
 						return rest_ensure_response(['message' => 'portal user updated successfully.', 'data' => ['id' => $usercheck->id]]);
 					}
 				}
@@ -1266,10 +1272,6 @@
 		if (!send_portal_user_email('deleted', $user_deleted_email, null)) {
 			return new WP_Error('error sending email', 'user deleted, but email did not send to notify user.  send an email to the user informing them of this.', ['status' => 500, 'id' => $user_id]);
 		}
-
-		// Clear Cache
-
-		header('Clear-Site-Data: "cache"');
 		
 		// If User Delete Was Successful, Return Success Message
 		
@@ -1461,20 +1463,12 @@
 
 				foreach($updated_portal_users as $usercheck) { 
 					if ($user->id === $usercheck->id && strval($usercheck->sent_email) === '1') {
-
-						// Clear Browser Data
-
-						header('Clear-Site-Data: "cache"');
 						
 						// API Response Upon Success
 
 						return rest_ensure_response(['message' => 'temporary password sent to corresponding email.', 'data' => ['email' => $email, 'sent_email' => $usercheck->sent_email]]);
 					}
 				}
-
-				// Clear Browser Data
-
-				header('Clear-Site-Data: "cache"');
 
 				// If Error In Updating 'sent_email' Column, Throw Error
 						
@@ -1564,10 +1558,6 @@
 
 							foreach($updated2_portal_users as $usercheck2) { 
 								if ($usercheck->id === $usercheck2->id && strval($usercheck2->sent_email) === '1') {
-
-									// Clear Cache
-
-									header('Clear-Site-Data: "cache"');
 									
 									// API Response Upon Success
 
@@ -1636,10 +1626,6 @@
 
 				foreach($updated2_portal_users as $usercheck) { 
 					if ($user->id === $usercheck->id && strval($usercheck->sent_email) === '1') {
-
-						// Clear Cache
-
-						header('Clear-Site-Data: "cache"');
 
 						// API Response Upon Success
 
