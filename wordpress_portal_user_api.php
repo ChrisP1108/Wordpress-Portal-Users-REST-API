@@ -1,5 +1,4 @@
 <?php
-
 // PORTAL API GLOBAL ENVIRONMENT VARIABLES
 
 	// Restricted Portal Pages URL Slugs
@@ -134,7 +133,7 @@
 		global $portal_login_slug;
 		global $portal_update_password_slug;
 
-		if (is_page($portal_login_slug) || is_page($portal_update_password_slug)) {
+		if (is_page($portal_login_slug)) {
 			if (verify_portal_cookie('admin') || verify_portal_cookie('user')) {
 				if (!isset($_COOKIE["wordpress_test_cookie"])) {
 					wp_redirect($portal_home_url); 
