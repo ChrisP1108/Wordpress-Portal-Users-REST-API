@@ -354,6 +354,12 @@
 
 		global $admin_cookie;
 		global $user_cookie;	
+
+		// Clear Browser Cache
+
+		header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+		header("Cache-Control: post-check=0, pre-check=0", false);
+		header("Pragma: no-cache");	
 		
 		// Remove Cookie Based On If User Has Admin Or Portal User Cookie To Logout
 		
@@ -372,12 +378,6 @@
 			setcookie($user_cookie_name, 'logged_out', time() - 3600, '/', '', 0);
 			return rest_ensure_response(['message' => 'portal user logged out successfully.']);
 		}
-
-		// Clear Browser Cache
-
-		header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
-		header("Cache-Control: post-check=0, pre-check=0", false);
-		header("Pragma: no-cache");	
 		
 		// If No Admin Or Portal User Cookies Found, Throw Error
 		
