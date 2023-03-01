@@ -1143,9 +1143,9 @@
 					$email = $user->email;
 				}
 
-				// Checks If User Is Updating Password From Temporary Password Generated From Email Or Is Reupdating.  If Reupdating, User Must Provide Existing Password Or Else Error Thrown
+				// Checks If User Is Updating Password From Temporary Password Generated From Email Or Is Reupdating If It Is A Portal User And Not An Admin.  If Reupdating, User Must Provide Existing Password Or Else Error Thrown
 
-				if (strval($user->updated_password) === '1') {
+				if (strval($user->updated_password) === '1' && !$is_admin) {
 					if (!$existing_password) {
 						return new WP_Error('existing password required', 'user must provide existing password as a `existing_password` key parameter if reupdating password from a non temporary generated password.', ['status' => 400]);
 					}
@@ -1157,9 +1157,9 @@
 					}
 				} else {
 
-					// Checks That Password Was Provided If User Is Updating From A Temporary Password Generated.  If Not, Throw Error.
+					// Checks That Password Was Provided If User Is Updating From A Temporary Password Generated If It Is A Portal User And Not An Admin.  If Not, Throw Error.
 
-					if (!$password) {
+					if (!$password && !$is_admin) {
 						return new WP_Error('password must be updated', 'password must be updated as current password is a temporary generated one.', ['status' => 400]);
 					}
 				}
