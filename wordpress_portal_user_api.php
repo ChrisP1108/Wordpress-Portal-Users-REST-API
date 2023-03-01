@@ -1048,7 +1048,7 @@
 		
 		// If Rows Looped Through And No Matching Row Data Found, Error Thrown
 		
-		return new WP_Error('error inserting row', 'an error occured inserting new row in portal table in mysql', ['status' => 500]);
+		return new WP_Error('error inserting row', 'an error occured inserting new row in portal table in mysql.', ['status' => 500]);
 		
 	};
 
@@ -1147,7 +1147,7 @@
 
 				if (strval($user->updated_password) === '1') {
 					if (!$existing_password) {
-						return new WP_Error('existing password required', 'user must provide existing password if reupdating password from a non temporary generated password.', ['status' => 400]);
+						return new WP_Error('existing password required', 'user must provide existing password as a `existing_password` key parameter if reupdating password from a non temporary generated password.', ['status' => 400]);
 					}
 
 					// Check That Existing Password Provided Matches With Hashed Password In Database.  If Not, Error Thrown.
@@ -1170,7 +1170,7 @@
 
 				if ($password) {
 					if (strlen($password) < 8 || strval(preg_match('/[A-Z]/', $password)) === '0' || strval(preg_match('/[1-9]/', $password)) === '0') {
-						return new WP_Error('not a secure password', 'password length must be at least 8 characters in length, have one uppercase and one numberic character.', ['status' => 400]);
+						return new WP_Error('not a secure password', 'password length must be at least 8 characters in length, have one uppercase and one numeric character.', ['status' => 400]);
 					}
 
 					// Password Encoded And Salted For Secure Storage In Database
