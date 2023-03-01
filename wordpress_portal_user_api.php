@@ -1,6 +1,11 @@
 <?php
 // PORTAL API GLOBAL ENVIRONMENT VARIABLES
 
+	// Portal Email Temporary Password Send From Address
+
+	global $send_email_from;
+	$send_email_from = 'noreply@partnerwithmagellan.com';
+
 	// Restricted Portal Pages URL Slugs
 
 	global $restricted_pages;
@@ -70,8 +75,12 @@
 
 	// Portal Cookie Expiration Time In Days
 
+		// If User Checks Remember
+
 	global $cookie_days_remember;
 	$cookie_days_remember = 7;
+
+		// If User Does Not Check Remember
 
 	global $cookie_not_remembered;
 	$cookie_not_remembered = 1;
@@ -344,13 +353,7 @@
 		global $user_cookie_name;
 
 		global $admin_cookie;
-		global $user_cookie;
-
-		// Clear Browser Cache
-
-		header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
-		header("Cache-Control: post-check=0, pre-check=0", false);
-		header("Pragma: no-cache");		
+		global $user_cookie;	
 		
 		// Remove Cookie Based On If User Has Admin Or Portal User Cookie To Logout
 		
@@ -370,9 +373,11 @@
 			return rest_ensure_response(['message' => 'portal user logged out successfully.']);
 		}
 
-		// Clear Cache Wordpress
+		// Clear Browser Cache
 
-		wp_cache_flush();
+		header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+		header("Cache-Control: post-check=0, pre-check=0", false);
+		header("Pragma: no-cache");	
 		
 		// If No Admin Or Portal User Cookies Found, Throw Error
 		
@@ -582,8 +587,10 @@
 		
 		// Email Headers
 
+		global $send_email_from;
+
 		$headers = [
-            "From: noreply@partnerwithmagellan.com",
+            "From: ". $send_email_from,
             "Content-type: text/html; charset=UTF-8"
         ];
 
@@ -904,6 +911,12 @@
 			return new WP_Error('incomplete fields', 'please fill out the `first_name`, `last_name`, `company`, and `email` fields to register portal user.', ['status' => 400]);
 		}
 
+		// Check That Email Input Is A Valid Email.  Error Thrown If Not
+
+		if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+			return new WP_Error('invalid email', 'please provide a valid email.', ['status' => 400]);
+		}
+
 		// Checks That There Are No Script Tags To Avoid Malicious Code Injection
 
 		if (!var_secure($first_name) || !var_secure($last_name) || !var_secure($company) || !var_secure($email)) {
@@ -1069,6 +1082,7 @@
 		$company = $body->company ?? NULL;
 		$email = $body->email ?? NULL;
 		$password = $body->password ?? NULL;
+		$existing_password = $body->existing_password ?? NULL;
 		
 		// Checks That There Is At Least One Field To Update.  Otherwise Error Thrown
 		
@@ -1128,15 +1142,46 @@
 				if (!$email) {
 					$email = $user->email;
 				}
-				if ($password) {
-					if (strlen($password) < 8) {
-						return new WP_Error('not a secure password', 'password length must be at least 8 characters.', ['status' => 400]);
+
+				// Checks If User Is Updating Password From Temporary Password Generated From Email Or Is Reupdating.  If Reupdating, User Must Provide Existing Password Or Else Error Thrown
+
+				if (strval($user->updated_password) === '1') {
+					if (!$existing_password) {
+						return new WP_Error('existing password required', 'user must provide existing password if reupdating password from a non temporary generated password.', ['status' => 400]);
 					}
+
+					// Check That Existing Password Provided Matches With Hashed Password In Database.  If Not, Error Thrown.
+
+					if (!wp_check_password(encode_password($existing_password, $user->created), $user->password)) {
+						return new WP_Error('invalid existing password', 'existing password provided is invalid.', ['status' => 401]);
+					}
+				} else {
+
+					// Checks That Password Was Provided If User Is Updating From A Temporary Password Generated.  If Not, Throw Error.
+
+					if (!$password) {
+						return new WP_Error('password must be updated', 'password must be updated as current password is a temporary generated one.', ['status' => 400]);
+					}
+				}
+
+				// Checks If 
+
+				// Checks That Password Is At Least 8 Characters In Length
+
+				if ($password) {
+					if (strlen($password) < 8 || strval(preg_match('/[A-Z]/', $password)) === '0' || strval(preg_match('/[1-9]/', $password)) === '0') {
+						return new WP_Error('not a secure password', 'password length must be at least 8 characters in length, have one uppercase and one numberic character.', ['status' => 400]);
+					}
+
+					// Password Encoded And Salted For Secure Storage In Database
 
 					global $portal_password_salt;
 
 					$hashed_password = wp_hash_password(encode_password($password, $user->created));
 				}
+
+				// If No Password Provided And User Already Updated Password From Temporary Password And Is Not Wanting To Update Existing Password, Use Existing Hashed Password Stored In Database
+
 				if (!$password) {
 					$hashed_password = $user->password;
 				}
