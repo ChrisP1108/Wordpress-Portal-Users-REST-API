@@ -98,6 +98,8 @@
 	$portal_admin_key = '-@8X-11-%^Z-B@Z*-6125-V&tZ-2185-+cz@-4';
 
 	// Portal User Password Salt 
+
+	// WARNING - MODIFYING THIS PASSWORD SALT WILL CAUSE EXISTING USERS PASSWORDS TO NO LONGER WORK.  IF YOU MUST MODIFY THIS KEY, EXISTING USERS WILL NEED THEIR PASSWORDS RESET
 	
 	global $portal_password_salt;
 	$portal_password_salt = '0!dB%z_@Ga,IxQ8#s=P{@?~|fX$*v2V]oF&x';
