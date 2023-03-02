@@ -16,7 +16,9 @@
 		'forge-resource-center-live-events',
 		'forge-resource-center-monthly-marketing',
 		'forge-resource-center-radio',
-		'forge-resource-center-television'
+		'forge-resource-center-television',
+		'forge-user-update-password',
+		'forge-user-update-credentials'
 	];
 
 	// MySql Portal Users Table Name
@@ -55,18 +57,18 @@
 	// Portal User Login Page URL
 
 	global $portal_login_url;
-	$portal_login_url = 'https://www.partnerwithmagellan.com/portal-user-login/';
+	$portal_login_url = 'https://www.partnerwithmagellan.com/forge-user-login/';
 	global $portal_login_slug;
-	$portal_login_slug = 'portal-user-login';
+	$portal_login_slug = 'forge-user-login';
 
 	// Portal User Update Password URL slug
 
 	global $portal_update_password_slug;
-	$portal_update_password_slug = 'portal-user-update-password';
+	$portal_update_password_slug = 'forge-user-update-password';
 
 	// Portal Admin Dashboard URL Slug
 	global $portal_admin_url_slug;
-	$portal_admin_url_slug = 'portal-admin-dashboard';
+	$portal_admin_url_slug = 'forge-admin-dashboard';
 
 	// Portal Homepage URL For Logged In Users
 
@@ -484,6 +486,8 @@
 
 		// Email Template For Portal User Created, Password Reset
 
+		global $portal_home_url;
+
 		$html_email_template = '
             <table cellspacing="0" cellpadding="0" style="background-image: url(http://www.partnerwithmagellan.com/wp-content/uploads/2023/02/email_background.jpg); background-color: black; background-repeat: no-repeat; background-position: center; background-size: cover; padding: 32px 16px; width: 100%;">
                 <tbody style="margin: 0 auto;">
@@ -531,7 +535,7 @@
                     <tr width="400">
                         <td height="43" colspan="3" width="400" align="center" style="padding-top: 48px;">
                             <blockquote style="margin: 0; max-width: 400px; margin: 0 auto; padding-left: 28px; border:none; text-align: left;">
-                                <a href="https://www.partnerwithmagellan.com/forge-resource-center-home/" target="_blank" style="text-decoration: none; text-align: center; max-width: 200px;" rel="noopener">
+                                <a href="'. $portal_home_url .'" target="_blank" style="text-decoration: none; text-align: center; max-width: 200px;" rel="noopener">
                                     <p style="color: white; font-size: 16px; line-height: 20px; margin: 0; background: #00000090; max-width: 200px; padding: 12px; border: 2px #e3530f solid; text-align: center;">
                                         <strong>CLICK HERE TO LOGIN</strong>
                                     </p>
@@ -927,7 +931,7 @@
 		
 		$first_name = ucfirst(strtolower($first_name));
 		$last_name = ucfirst(strtolower($last_name));
-		$company = ucfirst(strtolower($company));
+		$company = ucwords(strtolower($company));
 		$email = strtolower($email);
 		
 		// Define Wordpress Database Methods And Database Table
@@ -1194,7 +1198,7 @@
 		
 				$first_name = ucfirst(strtolower($first_name));
 				$last_name = ucfirst(strtolower($last_name));
-				$company = ucfirst(strtolower($company));
+				$company = ucwords(strtolower($company));
 				$email = strtolower($email);
 
 				$wpdb->update($portal_table_name, array(
