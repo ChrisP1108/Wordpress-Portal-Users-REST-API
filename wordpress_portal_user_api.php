@@ -1230,7 +1230,19 @@
 							return new WP_Error('error updating password', 'portal user password did not update correctly.  try regenerating a new temporary password.', ['status' => 500]);
 						}
 
-						return rest_ensure_response(['message' => 'portal user updated successfully.', 'data' => ['id' => $usercheck->id]]);
+						return rest_ensure_response(['message' => 'portal user updated successfully', 'data' => [
+							'id' => htmlspecialchars($usercheck->id),
+							'first_name' => htmlspecialchars($usercheck->first_name),
+							'last_name' => htmlspecialchars($usercheck->last_name),
+							'company' => htmlspecialchars($usercheck->company),
+							'email' => htmlspecialchars($usercheck->email),
+							'updated_password' => htmlspecialchars($usercheck->updated_password),
+							'sent_email' => htmlspecialchars($usercheck->sent_email),
+							'times_logged_in' => htmlspecialchars($usercheck->times_logged_in),
+							'last_login' => htmlspecialchars($usercheck->last_login),
+							'created' => htmlspecialchars($usercheck->created),
+							'updated' => htmlspecialchars($usercheck->updated)
+						]]);
 					}
 				}
 
